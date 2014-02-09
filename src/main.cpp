@@ -1,10 +1,13 @@
 
 #include "conf.h"
+
+#include "jfif.hpp"
+#include "instream.hpp"
+
 #include <iostream>
 #include <fstream>
 
 #include <stdint.h>
-#include <arpa/inet.h>
 
 namespace program_result
 {
@@ -24,6 +27,8 @@ namespace jpeg_marker
 		START_OF_IMAGE = 0xD8,
 		END_OF_IMAGE = 0xD9,
 
+		JFIF = 0xE0,
+		EXIF = 0xE1, // TODO: Not supported yet
 		MARKER = 0xFF
 	};
 }
@@ -56,14 +61,50 @@ int main(int argc, char *argv[])
 
 	while (in_stream.good() && in_stream.get() == jpeg_marker::MARKER)
 	{
-		int marker_type = in_stream.get();
-		uint16_t network_size;
-		in_stream >> network_size;
-		uint_fast16_t size = ntohs(size);
+		const uint_fast8_t marker_type = in_stream.get();
+		const uint_fast16_t size = read_big_endian_unsigned_int(in_stream, 2);
 
-		in_stream.ignore(size - 2);
+		switch (marker_type)
+		{
+		case jpeg_marker::JFIF:
+			do {
+				jfif::info jfif_info(in_stream);
+				in_stream.ignore(size - 2 - jfif::info::SIZE_IN_FILE);
+				if (jfif_info.is_valid())
+				{
+					const char *density_units = "unknown";
+					switch (jfif_info.density_units())
+					{
+					case jfif::PIXELS_PER_CENTIMETRE:
+						density_units = "pixels/cm";
+						break;
 
-		std::cout << "Found section of type " << marker_type << " and size " << size << std::endl;
+					case jfif::PIXELS_PER_INCH:
+						density_units = "pixels/inch";
+						break;
+
+					default:
+						;
+					}
+
+					std::cout << "Found JFIF v" << static_cast<unsigned int>(jfif_info.major_version())
+								<< "." << static_cast<unsigned int>(jfif_info.minor_version())
+								<< " section:" << std::endl
+								<< " Density units: " << density_units << std::endl
+								<< " X Density: " << jfif_info.x_density() << std::endl
+								<< " Y Density: " << jfif_info.y_density() << std::endl;
+				}
+				else
+				{
+					std::cout << "Found JFIF section but it is not valid" << std::endl;
+				}
+			} while(0);
+			break;
+
+		default:
+			in_stream.ignore(size - 2);
+			std::cout << "Found section of type " << static_cast<unsigned int>(marker_type) << " and size " << size << std::endl;
+		}
 	}
 
 	in_stream.close();
