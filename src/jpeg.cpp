@@ -42,3 +42,32 @@ void quantization_table::print(std::ostream &stream)
 		stream << '\t' << static_cast<unsigned int>(matrix[k++]) << "\t]" << std::endl;
 	}
 }
+
+huffman_table::huffman_table(std::istream &stream)
+{
+	unsigned char symbols_per_word_size[MAX_WORD_SIZE];
+	stream.read(reinterpret_cast<char *>(symbols_per_word_size), MAX_WORD_SIZE);
+
+	int all_symbol_amount = 0;
+	for (uint_fast8_t index = 0; index < MAX_WORD_SIZE; index++)
+	{
+		symbol_indexes[index] = all_symbol_amount;
+		all_symbol_amount += symbols_per_word_size[index];
+	}
+
+	unsigned char *all_symbols = new unsigned char[all_symbol_amount];
+	stream.read(reinterpret_cast<char *>(all_symbols), all_symbol_amount);
+
+	symbols = all_symbols;
+	_symbol_amount = all_symbol_amount;
+}
+
+huffman_table::~huffman_table()
+{
+	delete[] symbols;
+}
+
+uint_fast8_t huffman_table::symbol_amount() const
+{
+	return _symbol_amount;
+}

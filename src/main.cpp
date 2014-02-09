@@ -92,6 +92,25 @@ int main(int argc, char *argv[])
 			}
 			break;
 
+		case jpeg_marker::HUFFMAN_TABLE:
+			do
+			{
+				const uint_fast8_t table_id = in_stream.get();
+				const uint_fast8_t symbol_amount = huffman_table(in_stream).symbol_amount();
+				const uint_fast16_t expected_size = symbol_amount + huffman_table::MAX_WORD_SIZE + 3;
+				if (size == expected_size)
+				{
+					std::cout << "Found huffman table with id " << static_cast<unsigned int>(table_id)
+								<< " (" << static_cast<unsigned int>(symbol_amount) << " symbols found)" << std::endl;
+				}
+				else
+				{
+					std::cout << "Found invalid huffman table. Expected size for it was "
+							<< (expected_size - 3) << " but size is actually " << (size - 3) << std::endl;
+				}
+			} while(0);
+			break;
+
 		case jpeg_marker::JFIF:
 			do {
 				jfif::info jfif_info(in_stream);
