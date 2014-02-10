@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 // Assumed for 8x8 matrixes
-const uint_fast8_t zigzag_level_baseline[] = {0, 1, 3, 6, 10, 15, 21, 28, 36, 43, 49, 54, 58, 61, 63};
+const uint_fast8_t zigzag_level_baseline[] = {0, 1, 3, 6, 10, 15, 21, 28, 35, 41, 46, 50, 53, 55, 56};
 
 uint_fast8_t zigzag_position(uint_fast8_t x, uint_fast8_t y)
 {
