@@ -1,5 +1,7 @@
 
 #include "jpeg.hpp"
+#include "instream.hpp"
+
 #include <stdint.h>
 
 // Assumed for 8x8 matrixes
@@ -70,4 +72,36 @@ huffman_table::~huffman_table()
 uint_fast8_t huffman_table::symbol_amount() const
 {
 	return _symbol_amount;
+}
+
+frame_info::frame_info(std::istream &stream, const quantization_table_list &tables)
+{
+	precision = stream.get();
+	height = read_big_endian_unsigned_int(stream, 2);
+	width = read_big_endian_unsigned_int(stream, 2);
+
+	channels_amount = stream.get();
+	channels = new frame_channel[channels_amount];
+
+	for (uint_fast8_t channel_index = 0; channel_index < channels_amount; channel_index++)
+	{
+		// Due to I am unable to find proper specifications I am not fully sure to be extracting the
+		// channels properly.
+		// TODO: This must be ensured that works for other configuration of channels than YCbCr and with asymetric sample (2x1, 1x2,...)
+
+		frame_channel &channel = channels[channel_index];
+		channel.channel_type = static_cast<frame_channel::channel_type_e>(stream.get());
+
+		const uint_fast8_t samples = stream.get();
+		channel.horizontal_sample = (samples >> 4) & 0x0F;
+		channel.vertical_sample = samples & 0x0F;
+
+		const uint_fast8_t quantization_table_index = stream.get();
+		channel.table = tables.list[quantization_table_index];
+	}
+}
+
+uint_fast16_t frame_info::expected_byte_size() const
+{
+	return 8 + 3 * channels_amount;
 }

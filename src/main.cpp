@@ -69,6 +69,12 @@ int main(int argc, char *argv[])
 		return program_result::INVALID_FILE_FORMAT;
 	}
 
+	quantization_table_list tables;
+	for (uint_fast8_t i = 0; i < quantization_table_list::MAX_TABLES; i++)
+	{
+		tables.list[i] = NULL;
+	}
+
 	while (in_stream.good() && in_stream.get() == jpeg_marker::MARKER)
 	{
 		const uint_fast8_t marker_type = in_stream.get();
@@ -80,16 +86,47 @@ int main(int argc, char *argv[])
 			if (size == quantization_table::WIDTH * quantization_table::HEIGHT + 3)
 			{
 				const uint_fast8_t table_id = in_stream.get();
-				std::cout << "Found quatization table with id "
-						<< static_cast<unsigned int>(table_id) << std::endl;
-				quantization_table(in_stream).print(std::cout);
+				if (table_id >= quantization_table_list::MAX_TABLES)
+				{
+					std::cout << "Found invalid quantization table id. It is "
+							<< static_cast<unsigned int>(table_id) << " but id can be only between 0 and "
+							<< static_cast<unsigned int>(quantization_table_list::MAX_TABLES - 1) << std::endl;
+				}
+				else
+				{
+					std::cout << "Found quantization table with id "
+							<< static_cast<unsigned int>(table_id) << std::endl;
+					tables.list[table_id] = new quantization_table(in_stream);
+					tables.list[table_id]->print(std::cout);
+				}
 			}
 			else
 			{
-				std::cout << "Found invalid quatization table. Expected size was "
+				std::cout << "Found invalid quantization table. Expected size was "
 						<< static_cast<unsigned int>(quantization_table::WIDTH) << 'x'
 						<< static_cast<unsigned int>(quantization_table::HEIGHT) << std::endl;
 			}
+			break;
+
+		case jpeg_marker::START_OF_FRAME_BASELINE_DCT:
+			do
+			{
+				frame_info info(in_stream, tables);
+				if (info.expected_byte_size() == size)
+				{
+					std::cout << "Found frame for an image with "
+							<< static_cast<unsigned int>(info.channels_amount)
+							<< " channels and resolution "
+							<< static_cast<unsigned int>(info.width) << 'x'
+							<< static_cast<unsigned int>(info.height) << std::endl;
+				}
+				else
+				{
+					std::cout << "Found invalid frame. Expected size was "
+							<< static_cast<unsigned int>(info.expected_byte_size()) << " but actually was "
+							<< static_cast<unsigned int>(size) << std::endl;
+				}
+			} while(0);
 			break;
 
 		case jpeg_marker::HUFFMAN_TABLE:
@@ -149,6 +186,13 @@ int main(int argc, char *argv[])
 		default:
 			in_stream.ignore(size - 2);
 			std::cout << "Found section of type " << static_cast<unsigned int>(marker_type) << " and size " << size << std::endl;
+		}
+	}
+
+	for (uint_fast8_t i = 0; i < quantization_table_list::MAX_TABLES; i++)
+	{
+		if (tables.list[i] != NULL) {
+			delete tables.list[i];
 		}
 	}
 
