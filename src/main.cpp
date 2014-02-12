@@ -8,8 +8,6 @@
 #include <iostream>
 #include <fstream>
 
-#include <stdint.h>
-
 namespace program_result
 {
 	enum program_result_e
@@ -83,7 +81,7 @@ int main(int argc, char *argv[])
 		switch (marker_type)
 		{
 		case jpeg_marker::QUANTIZATION_TABLE:
-			if (size == quantization_table::WIDTH * quantization_table::HEIGHT + 3)
+			if (size == quantization_table::CELL_AMOUNT + 3)
 			{
 				const uint_fast8_t table_id = in_stream.get();
 				if (table_id >= quantization_table_list::MAX_TABLES)
@@ -103,8 +101,8 @@ int main(int argc, char *argv[])
 			else
 			{
 				std::cout << "Found invalid quantization table. Expected size was "
-						<< static_cast<unsigned int>(quantization_table::WIDTH) << 'x'
-						<< static_cast<unsigned int>(quantization_table::HEIGHT) << std::endl;
+						<< static_cast<unsigned int>(quantization_table::SIDE) << 'x'
+						<< static_cast<unsigned int>(quantization_table::SIDE) << std::endl;
 			}
 			break;
 

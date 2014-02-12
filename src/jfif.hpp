@@ -2,8 +2,8 @@
 #ifndef JFIF_HPP_
 #define JFIF_HPP_
 
-#include <iostream>
 #include <stdint.h>
+#include <iostream>
 
 namespace jfif
 {

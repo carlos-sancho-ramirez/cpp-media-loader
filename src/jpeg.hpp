@@ -2,19 +2,28 @@
 #ifndef JPEG_HPP_
 #define JPEG_HPP_
 
-#include <stdint.h>
+#include "bounded_integers.hpp"
 #include <iostream>
 
 struct quantization_table
 {
 	enum
 	{
-		WIDTH = 8,
-		HEIGHT = 8
+		SIDE = 8,
+		CELL_AMOUNT = SIDE * SIDE
 	};
 
-	unsigned char matrix[WIDTH * HEIGHT];
+	typedef bounded_integer<0,quantization_table::SIDE - 1> side_t;
+	typedef bounded_integer<0,quantization_table::CELL_AMOUNT - 1> cell_t;
 
+	typedef typename side_t::fast side_fast_t;
+	typedef typename cell_t::fast cell_fast_t;
+
+private:
+	static cell_fast_t zigzag_position(side_fast_t x, side_fast_t y);
+	unsigned char matrix[CELL_AMOUNT];
+
+public:
 	quantization_table(std::istream &stream);
 	void print(std::ostream &stream);
 };
@@ -57,9 +66,16 @@ struct frame_channel
 		CHROMINANCE_RED = 3
 	};
 
+	enum
+	{
+		MAX_SAMPLE_ALLOWED = 15
+	};
+
+	typedef typename bounded_integer<0, MAX_SAMPLE_ALLOWED>::fast uint_fast4_t;
+
 	quantization_table *table;
-	uint_fast8_t horizontal_sample;
-	uint_fast8_t vertical_sample;
+	uint_fast4_t horizontal_sample;
+	uint_fast4_t vertical_sample;
 	channel_type_e channel_type;
 };
 

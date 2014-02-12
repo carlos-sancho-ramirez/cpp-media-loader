@@ -2,28 +2,30 @@
 #include "jpeg.hpp"
 #include "instream.hpp"
 
-#include <stdint.h>
-
 // Assumed for 8x8 matrixes
-const uint_fast8_t zigzag_level_baseline[] = {0, 1, 3, 6, 10, 15, 21, 28, 35, 41, 46, 50, 53, 55, 56};
+const quantization_table::cell_fast_t zigzag_level_baseline[] =
+		{0, 1, 3, 6, 10, 15, 21, 28, 35, 41, 46, 50, 53, 55, 56};
 
-uint_fast8_t zigzag_position(uint_fast8_t x, uint_fast8_t y)
+quantization_table::cell_fast_t quantization_table::zigzag_position(side_fast_t x, side_fast_t y)
 {
-	const uint_fast8_t level = x + y;
+	typedef bounded_integer<side_t::MIN_VALUE * 2, side_t::MAX_VALUE * 2> level_t;
+	typedef typename level_t::fast level_fast_t;
+
+	const level_fast_t level = x + y;
 	const bool odd_level = level & 1;
-	const uint_fast8_t level_baseline = zigzag_level_baseline[level];
+	const cell_fast_t level_baseline = zigzag_level_baseline[level];
 	return level_baseline + (odd_level? y : x);
 }
 
 quantization_table::quantization_table(std::istream &stream)
 {
-	unsigned char zigzag[WIDTH * HEIGHT];
+	unsigned char zigzag[CELL_AMOUNT];
 	stream.read(reinterpret_cast<char *>(zigzag), sizeof(zigzag));
 
-	uint_fast8_t k = 0;
-	for (uint_fast8_t y = 0; y < HEIGHT; y++)
+	cell_fast_t k = 0;
+	for (side_fast_t y = 0; y < SIDE; y++)
 	{
-		for (uint_fast8_t x = 0; x < WIDTH; x++)
+		for (side_fast_t x = 0; x < SIDE; x++)
 		{
 			matrix[k++] = zigzag[zigzag_position(x, y)];
 		}
@@ -32,12 +34,12 @@ quantization_table::quantization_table(std::istream &stream)
 
 void quantization_table::print(std::ostream &stream)
 {
-	uint_fast8_t k = 0;
+	cell_fast_t k = 0;
 
-	for (uint_fast8_t y = 0; y < HEIGHT; y++)
+	for (side_fast_t y = 0; y < SIDE; y++)
 	{
 		stream << "  [";
-		for (uint_fast8_t x = 0; x < WIDTH - 1; x++)
+		for (side_fast_t x = 0; x < SIDE - 1; x++)
 		{
 			stream << '\t' << static_cast<unsigned int>(matrix[k++]) << ',';
 		}
