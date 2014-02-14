@@ -13,14 +13,18 @@ struct quantization_table
 		CELL_AMOUNT = SIDE * SIDE
 	};
 
-	typedef bounded_integer<0,quantization_table::SIDE - 1> side_t;
-	typedef bounded_integer<0,quantization_table::CELL_AMOUNT - 1> cell_t;
+	typedef bounded_integer<0,quantization_table::SIDE - 1> side_index_t;
+	typedef bounded_integer<0,quantization_table::SIDE> side_count_t;
+	typedef bounded_integer<0,quantization_table::CELL_AMOUNT - 1> cell_index_t;
+	typedef bounded_integer<0,quantization_table::CELL_AMOUNT> cell_count_t;
 
-	typedef typename side_t::fast side_fast_t;
-	typedef typename cell_t::fast cell_fast_t;
+	typedef typename side_index_t::fast side_index_fast_t;
+	typedef typename side_count_t::fast side_count_fast_t;
+	typedef typename cell_index_t::fast cell_index_fast_t;
+	typedef typename cell_count_t::fast cell_count_fast_t;
 
 private:
-	static cell_fast_t zigzag_position(side_fast_t x, side_fast_t y);
+	static cell_index_fast_t zigzag_position(side_index_fast_t x, side_index_fast_t y);
 	unsigned char matrix[CELL_AMOUNT];
 
 public:

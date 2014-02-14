@@ -5,7 +5,13 @@
 #include <climits>
 #include <stdint.h>
 
+#include "conf.h"
 #include "template_utilities.hpp"
+
+#ifdef BOUNDED_INTEGERS_STRICT
+#include "integer_ranges.hpp"
+#endif // BOUNDED_INTEGERS_STRICT
+
 
 template<bool sign, bool minInsideSignedChar, bool minInsideSignedShort,
         bool minInsideSignedInt, bool maxInsideSignedChar,
@@ -79,7 +85,7 @@ struct bounded_integer
         MAX <= UCHAR_MAX,
         MAX <= SHRT_MAX,
         MAX <= USHRT_MAX,
-        MAX <= INT_MAX>::type least;
+        MAX <= INT_MAX>::type no_strict_least;
 
     typedef typename bounded_integer_type<
         MIN < 0,
@@ -90,7 +96,19 @@ struct bounded_integer
         MAX <= UCHAR_MAX,
         MAX <= SHRT_MAX,
         MAX <= USHRT_MAX,
-        MAX <= INT_MAX>::fast_type fast;
+        MAX <= INT_MAX>::fast_type no_strict_fast;
+
+#ifdef BOUNDED_INTEGERS_STRICT
+
+    typedef static_integer_range<MIN, MAX, no_strict_least> least;
+    typedef static_integer_range<MIN, MAX, no_strict_fast> fast;
+
+#else // BOUNDED_INTEGERS_STRICT
+
+    typedef no_strict_least least;
+    typedef no_strict_fast fast;
+
+#endif // BOUNDED_INTEGERS_STRICT
 
     enum
     {
