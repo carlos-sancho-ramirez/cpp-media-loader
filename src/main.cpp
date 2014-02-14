@@ -67,11 +67,12 @@ int main(int argc, char *argv[])
 		return program_result::INVALID_FILE_FORMAT;
 	}
 
-	quantization_table_list tables;
-	for (uint_fast8_t i = 0; i < quantization_table_list::MAX_TABLES; i++)
-	{
-		tables.list[i] = NULL;
-	}
+	table_list<quantization_table> tables;
+	table_list<huffman_table> dc_tables;
+	table_list<huffman_table> ac_tables;
+
+	frame_info *current_frame = NULL;
+	scan_info *current_scan = NULL;
 
 	while (in_stream.good() && in_stream.get() == jpeg_marker::MARKER)
 	{
@@ -83,12 +84,15 @@ int main(int argc, char *argv[])
 		case jpeg_marker::QUANTIZATION_TABLE:
 			if (size == quantization_table::CELL_AMOUNT + 3)
 			{
+				const table_list<quantization_table>::count_fast_t max_tables =
+						table_list<quantization_table>::MAX_TABLES;
+
 				const uint_fast8_t table_id = in_stream.get();
-				if (table_id >= quantization_table_list::MAX_TABLES)
+				if (table_id >= max_tables)
 				{
 					std::cout << "Found invalid quantization table id. It is "
 							<< static_cast<unsigned int>(table_id) << " but id can be only between 0 and "
-							<< static_cast<unsigned int>(quantization_table_list::MAX_TABLES - 1) << std::endl;
+							<< static_cast<unsigned int>(max_tables - 1) << std::endl;
 				}
 				else
 				{
@@ -109,19 +113,20 @@ int main(int argc, char *argv[])
 		case jpeg_marker::START_OF_FRAME_BASELINE_DCT:
 			do
 			{
-				frame_info info(in_stream, tables);
-				if (info.expected_byte_size() == size)
+				current_frame = new frame_info(in_stream, tables);
+
+				if (current_frame->expected_byte_size() == size)
 				{
 					std::cout << "Found frame for an image with "
-							<< static_cast<unsigned int>(info.channels_amount)
+							<< static_cast<unsigned int>(current_frame->channels_amount)
 							<< " channels and resolution "
-							<< static_cast<unsigned int>(info.width) << 'x'
-							<< static_cast<unsigned int>(info.height) << std::endl;
+							<< static_cast<unsigned int>(current_frame->width) << 'x'
+							<< static_cast<unsigned int>(current_frame->height) << std::endl;
 				}
 				else
 				{
 					std::cout << "Found invalid frame. Expected size was "
-							<< static_cast<unsigned int>(info.expected_byte_size()) << " but actually was "
+							<< static_cast<unsigned int>(current_frame->expected_byte_size()) << " but actually was "
 							<< static_cast<unsigned int>(size) << std::endl;
 				}
 			} while(0);
@@ -130,24 +135,30 @@ int main(int argc, char *argv[])
 		case jpeg_marker::HUFFMAN_TABLE:
 			do
 			{
-				const uint_fast8_t table_id = in_stream.get();
-				const uint_fast8_t symbol_amount = huffman_table(in_stream).symbol_amount();
-				const uint_fast16_t expected_size = symbol_amount + huffman_table::MAX_WORD_SIZE + 3;
+				const uint_fast8_t table_ref = in_stream.get();
+				const table_list<huffman_table>::index_fast_t table_id = table_ref & 0x0F;
+				bool is_ac = table_id & 0x10;
+
+				huffman_table *table = new huffman_table(in_stream);
+				const uint_fast8_t symbol_amount = table->symbol_amount();
+				const uint_fast16_t expected_size = table->expected_byte_size();
 				if (size == expected_size)
 				{
+					(is_ac? ac_tables : dc_tables).list[table_id] = table;
 					std::cout << "Found huffman table with id " << static_cast<unsigned int>(table_id)
-								<< " (" << static_cast<unsigned int>(symbol_amount) << " symbols found)" << std::endl;
+								<< " for " << (is_ac? "ac" : "dc") << " (" << static_cast<unsigned int>(symbol_amount) << " symbols found)" << std::endl;
 				}
 				else
 				{
 					std::cout << "Found invalid huffman table. Expected size for it was "
-							<< (expected_size - 3) << " but size is actually " << (size - 3) << std::endl;
+							<< expected_size << " but size is actually " << size << std::endl;
 				}
 			} while(0);
 			break;
 
 		case jpeg_marker::JFIF:
-			do {
+			do
+			{
 				jfif::info jfif_info(in_stream);
 				in_stream.ignore(size - 2 - jfif::info::SIZE_IN_FILE);
 				if (jfif_info.is_valid())
@@ -181,16 +192,60 @@ int main(int argc, char *argv[])
 			} while(0);
 			break;
 
+		case jpeg_marker::START_OF_SCAN:
+			do
+			{
+				current_scan = new scan_info(in_stream, dc_tables, ac_tables);
+
+				if (current_scan->expected_byte_size() == size)
+				{
+					std::cout << "Found scan for an image with "
+							<< static_cast<unsigned int>(current_scan->channels_amount)
+							<< " channels" << std::endl;
+				}
+				else
+				{
+					std::cout << "Found invalid scan. Expected size was "
+							<< static_cast<unsigned int>(current_scan->expected_byte_size()) << " but actually was "
+							<< static_cast<unsigned int>(size) << std::endl;
+				}
+			} while(0);
+			break;
+
 		default:
 			in_stream.ignore(size - 2);
 			std::cout << "Found section of type " << static_cast<unsigned int>(marker_type) << " and size " << size << std::endl;
 		}
 	}
 
-	for (uint_fast8_t i = 0; i < quantization_table_list::MAX_TABLES; i++)
+	if (current_scan != NULL)
 	{
-		if (tables.list[i] != NULL) {
+		delete current_scan;
+	}
+
+	if (current_frame != NULL)
+	{
+		delete current_frame;
+	}
+
+	for (table_list<quantization_table>::count_fast_t i = 0; i < table_list<quantization_table>::MAX_TABLES; i++)
+	{
+		if (tables.list[i] != NULL)
+		{
 			delete tables.list[i];
+		}
+	}
+
+	for (table_list<huffman_table>::count_fast_t i = 0; i < table_list<huffman_table>::MAX_TABLES; i++)
+	{
+		if (dc_tables.list[i] != NULL)
+		{
+			delete dc_tables.list[i];
+		}
+
+		if (ac_tables.list[i] != NULL)
+		{
+			delete ac_tables.list[i];
 		}
 	}
 

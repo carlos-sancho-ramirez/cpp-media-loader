@@ -32,14 +32,29 @@ public:
 	void print(std::ostream &stream);
 };
 
-struct quantization_table_list
+template<class TABLE_TYPE>
+struct table_list
 {
 	enum
 	{
 		MAX_TABLES = 16 // This is the maximum number of tables that the jpeg format allows.
 	};
 
-	quantization_table *list[MAX_TABLES];
+	typedef bounded_integer<0, MAX_TABLES - 1> index_t;
+	typedef bounded_integer<0, MAX_TABLES> count_t;
+
+	typedef typename index_t::fast index_fast_t;
+	typedef typename count_t::fast count_fast_t;
+
+	TABLE_TYPE *list[MAX_TABLES];
+
+	table_list()
+	{
+		for (count_fast_t i = 0; i < MAX_TABLES; i++)
+		{
+			list[i] = NULL;
+		}
+	}
 };
 
 class huffman_table
@@ -59,9 +74,10 @@ public:
 	huffman_table(std::istream &stream);
 	~huffman_table();
 	uint_fast8_t symbol_amount() const;
+	uint_fast16_t expected_byte_size() const;
 };
 
-struct frame_channel
+struct basic_channel
 {
 	enum channel_type_e
 	{
@@ -70,6 +86,11 @@ struct frame_channel
 		CHROMINANCE_RED = 3
 	};
 
+	channel_type_e channel_type;
+};
+
+struct frame_channel : public basic_channel
+{
 	enum
 	{
 		MAX_SAMPLE_ALLOWED = 15
@@ -80,7 +101,11 @@ struct frame_channel
 	quantization_table *table;
 	uint_fast4_t horizontal_sample;
 	uint_fast4_t vertical_sample;
-	channel_type_e channel_type;
+};
+
+struct scan_channel : public basic_channel
+{
+	huffman_table *dc_table, *ac_table;
 };
 
 struct frame_info
@@ -91,7 +116,17 @@ struct frame_info
 	uint_fast8_t channels_amount;
 	frame_channel *channels;
 
-	frame_info(std::istream &stream, const quantization_table_list &tables);
+	frame_info(std::istream &stream, const table_list<quantization_table> &tables);
+	uint_fast16_t expected_byte_size() const;
+};
+
+struct scan_info
+{
+	uint_fast8_t channels_amount;
+	scan_channel *channels;
+
+	scan_info(std::istream &stream, const table_list<huffman_table> &dc_tables,
+			const table_list<huffman_table> &ac_tables);
 	uint_fast16_t expected_byte_size() const;
 };
 

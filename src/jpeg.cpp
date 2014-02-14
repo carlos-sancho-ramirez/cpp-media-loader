@@ -76,7 +76,12 @@ uint_fast8_t huffman_table::symbol_amount() const
 	return _symbol_amount;
 }
 
-frame_info::frame_info(std::istream &stream, const quantization_table_list &tables)
+uint_fast16_t huffman_table::expected_byte_size() const
+{
+	return _symbol_amount + MAX_WORD_SIZE + 3;
+}
+
+frame_info::frame_info(std::istream &stream, const table_list<quantization_table> &tables)
 {
 	precision = stream.get();
 	height = read_big_endian_unsigned_int(stream, 2);
@@ -106,4 +111,31 @@ frame_info::frame_info(std::istream &stream, const quantization_table_list &tabl
 uint_fast16_t frame_info::expected_byte_size() const
 {
 	return 8 + 3 * channels_amount;
+}
+
+scan_info::scan_info(std::istream &stream, const table_list<huffman_table> &dc_tables,
+		const table_list<huffman_table> &ac_tables)
+{
+	channels_amount = stream.get();
+	channels = new scan_channel[channels_amount];
+
+	for (uint_fast8_t channel_index = 0; channel_index < channels_amount; channel_index++)
+	{
+		// Due to I am unable to find proper specifications I am not fully sure to be extracting the
+		// channels properly.
+		// TODO: This must be ensured that works for other configuration of channels than YCbCr and with asymetric sample (2x1, 1x2,...)
+
+		scan_channel &channel = channels[channel_index];
+		channel.channel_type = static_cast<frame_channel::channel_type_e>(stream.get());
+
+		const uint_fast8_t table_ref = stream.get();
+		const table_list<huffman_table>::index_fast_t table_index = table_ref & 0x0F;
+		channel.dc_table = dc_tables.list[table_index];
+		channel.ac_table = ac_tables.list[table_index];
+	}
+}
+
+uint_fast16_t scan_info::expected_byte_size() const
+{
+	return 6 + 2 * channels_amount;
 }
