@@ -81,6 +81,17 @@ int main(int argc, char *argv[])
 
 		switch (marker_type)
 		{
+		case jpeg_marker::COMMENT:
+			do
+			{
+				char *comment = new char[size - 2];
+				in_stream.read(comment, size - 2);
+
+				std::cout << "Found comment: " << comment << std::endl;
+				delete[] comment;
+			} while(0);
+			break;
+
 		case jpeg_marker::QUANTIZATION_TABLE:
 			if (size == quantization_table::CELL_AMOUNT + 3)
 			{
