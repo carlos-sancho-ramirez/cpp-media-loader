@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 			{
 				const uint_fast8_t table_ref = in_stream.get();
 				const table_list<huffman_table>::index_fast_t table_id = table_ref & 0x0F;
-				bool is_ac = table_id & 0x10;
+				bool is_ac = (table_ref & 0x10) != 0;
 
 				huffman_table *table = new huffman_table(in_stream);
 				const uint_fast8_t symbol_amount = table->symbol_amount();
