@@ -19,28 +19,6 @@ namespace program_result
 	};
 }
 
-namespace jpeg_marker
-{
-	enum jpeg_marker_e
-	{
-		START_OF_FRAME_BASELINE_DCT = 0xC0,
-		START_OF_FRAME_PROGRESSIVE_DCT = 0xC2,
-		HUFFMAN_TABLE = 0xC4,
-		RESTART_BASE = 0xD0, // RSTn where n goes from 0 to 7 (0xD0 - 0xD7)
-		START_OF_IMAGE = 0xD8,
-		END_OF_IMAGE = 0xD9,
-		START_OF_SCAN = 0xDA,
-		QUANTIZATION_TABLE = 0xDB,
-		RESTART_INTERVAL = 0xDD,
-
-		APPLICATION_BASELINE = 0xE0, // APPn where n goes from 0 to 7 (0xE0 - 0xE7)
-		JFIF = 0xE0, // APP0 = JFIF
-		EXIF = 0xE1, // APP1 = EXIF
-		COMMENT = 0xFE, // Plain text comment
-		MARKER = 0xFF
-	};
-}
-
 int main(int argc, char *argv[])
 {
 	std::cout << "C++ Media Loader" << std::endl
@@ -74,7 +52,8 @@ int main(int argc, char *argv[])
 	frame_info *current_frame = NULL;
 	scan_info *current_scan = NULL;
 
-	while (in_stream.good() && in_stream.get() == jpeg_marker::MARKER)
+	unsigned char value;
+	while (in_stream.good() && (value = in_stream.get()) == jpeg_marker::MARKER)
 	{
 		const uint_fast8_t marker_type = in_stream.get();
 		const uint_fast16_t size = read_big_endian_unsigned_int(in_stream, 2);
@@ -227,6 +206,24 @@ int main(int argc, char *argv[])
 			in_stream.ignore(size - 2);
 			std::cout << "Found section of type " << static_cast<unsigned int>(marker_type) << " and size " << size << std::endl;
 		}
+	}
+
+	// Scan of data begins here
+	scan_bit_stream bit_stream = (&in_stream);
+	bit_stream.prepend(value);
+
+	rgb888_color *image = decode_into_RGB_image(bit_stream, *current_frame, *current_scan);
+
+	if (in_stream.get() != jpeg_marker::MARKER || in_stream.get() != jpeg_marker::END_OF_IMAGE)
+	{
+		in_stream.close();
+		std::cout << "File " << argv[1] << " is not a valid JPEG file" << std::endl;
+		return program_result::INVALID_FILE_FORMAT;
+	}
+
+	// Freeing resources
+	if (image != NULL) {
+		delete[] image;
 	}
 
 	if (current_scan != NULL)

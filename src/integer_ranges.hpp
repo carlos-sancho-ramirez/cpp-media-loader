@@ -120,6 +120,28 @@ private:
         return *this;
     }
 
+    static_integer_range<MIN,MAX,TYPE> &operator&=(TYPE value)
+    {
+        if (MIN > (_value & value) || (_value & value) > MAX)
+        {
+            throw out_of_range_error();
+        }
+
+        _value &= value;
+        return *this;
+    }
+
+    static_integer_range<MIN,MAX,TYPE> &operator|=(TYPE value)
+    {
+        if (MIN > (_value | value) || (_value | value) > MAX)
+        {
+            throw out_of_range_error();
+        }
+
+        _value |= value;
+        return *this;
+    }
+
     operator TYPE() const
     {
         return _value;
