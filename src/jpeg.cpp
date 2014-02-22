@@ -233,6 +233,46 @@ scan_bit_stream::number_t scan_bit_stream::next_number(const number_bit_amount_t
 	return result;
 }
 
+namespace {
+struct block_matrix
+{
+	enum
+	{
+		CELLS = 64
+	};
+	typedef typename bounded_integer<0, CELLS - 1>::fast cell_index_fast_t;
+	typedef typename bounded_integer<0, CELLS>::fast cell_count_fast_t;
+
+	float matrix[CELLS];
+
+	block_matrix()
+	{
+		cell_count_fast_t index;
+		for (index = 0; index < CELLS; index++)
+		{
+			matrix[index] = 0.0f;
+		}
+	}
+
+	static const cell_index_fast_t zigzag_to_real[];
+
+	void set_at_zigzag(const cell_index_fast_t index, float value)
+	{
+		const cell_index_fast_t position = zigzag_to_real[index];
+		matrix[position] = value;
+	}
+};
+
+const block_matrix::cell_index_fast_t block_matrix::zigzag_to_real[] =
+{
+	0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5,
+	12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28,
+	35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51,
+	58, 59, 52, 45, 38, 31, 39, 46,	53, 60, 61, 54, 47, 55, 62, 63
+};
+
+}
+
 rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, scan_info &scan)
 {
 	unsigned int pixels = frame.width;
@@ -246,18 +286,26 @@ rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, 
 
 	for (scan_info::channel_count_t channel=0; channel<scan.channels_amount; channel++)
 	{
-		huffman_table::symbol_value_t dc_length = scan.channels[channel].dc_table->next_symbol(stream);
+		const scan_channel &scan_channel = scan.channels[channel];
+		huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
 		const scan_bit_stream::number_t number = stream.next_number(dc_length);
 
 		int dc_value = number;
 		const bool is_negative = (number & (1 << (dc_length - 1))) == 0;
 		if (is_negative) dc_value = -(number ^ ((1 << dc_length) - 1));
 
+		block_matrix matrix;
+		matrix.set_at_zigzag(0, dc_value);
+
+		huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
+		// TODO: AC values handling
+
 		// Temporal code to check all is fine
 		std::cout << "First DC value has " << static_cast<unsigned int>(dc_length) << " bits and value "
-				<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
-		return bitmap;
+						<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
+		std::cout << "First AC value has value " << static_cast<unsigned int>(ac_symbol) << std::endl;
 	}
 
+	// TODO: This should be repeated until filling the whole image
 	return bitmap;
 }
