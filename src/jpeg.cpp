@@ -2,6 +2,8 @@
 #include "jpeg.hpp"
 #include "instream.hpp"
 
+#include <cmath>
+
 // Assumed for 8x8 matrixes
 const quantization_table::cell_index_fast_t zigzag_level_baseline[] =
 		{0, 1, 3, 6, 10, 15, 21, 28, 35, 41, 46, 50, 53, 55, 56};
@@ -238,13 +240,22 @@ struct block_matrix
 {
 	enum
 	{
-		CELLS = 64
+		SIDE = 8,
+		CELLS = SIDE * SIDE
 	};
+
+	typedef typename bounded_integer<0, SIDE - 1>::fast side_index_fast_t;
+	typedef typename bounded_integer<0, SIDE>::fast side_count_fast_t;
+
 	typedef typename bounded_integer<0, CELLS - 1>::fast cell_index_fast_t;
 	typedef typename bounded_integer<0, CELLS>::fast cell_count_fast_t;
 
-	float matrix[CELLS];
+	typedef double element_t;
 
+private:
+	element_t matrix[CELLS];
+
+public:
 	block_matrix()
 	{
 		cell_count_fast_t index;
@@ -261,6 +272,87 @@ struct block_matrix
 		const cell_index_fast_t position = zigzag_to_real[index];
 		matrix[position] = value;
 	}
+
+	cell_index_fast_t get_index(const side_index_fast_t x, const side_index_fast_t y) const
+	{
+		return y * SIDE + x;
+	}
+
+	element_t get(const side_index_fast_t x, const side_index_fast_t y) const
+	{
+		return matrix[get_index(x,y)];
+	}
+
+	void set(const side_index_fast_t x, const side_index_fast_t y, const element_t value)
+	{
+		matrix[get_index(x,y)] = value;
+	}
+
+	block_matrix operator*(const element_t value) const
+	{
+		block_matrix result;
+
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			result.matrix[index] = matrix[index] * value;
+		}
+
+		return result;
+	}
+
+	block_matrix &operator=(const block_matrix &other)
+	{
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			matrix[index] = other.matrix[index];
+		}
+
+		return *this;
+	}
+
+	block_matrix &operator+=(const element_t &value)
+	{
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			matrix[index] += value;
+		}
+
+		return *this;
+	}
+
+	block_matrix &operator-=(const element_t &value)
+	{
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			matrix[index] -= value;
+		}
+
+		return *this;
+	}
+
+	block_matrix operator+(const block_matrix &other) const
+	{
+		block_matrix result;
+
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			result.matrix[index] = matrix[index] + other.matrix[index];
+		}
+
+		return result;
+	}
+
+	block_matrix operator-(const block_matrix &other) const
+	{
+		block_matrix result;
+
+		for (cell_count_fast_t index=0; index < CELLS; index++)
+		{
+			result.matrix[index] = matrix[index] - other.matrix[index];
+		}
+
+		return result;
+	}
 };
 
 const block_matrix::cell_index_fast_t block_matrix::zigzag_to_real[] =
@@ -270,6 +362,49 @@ const block_matrix::cell_index_fast_t block_matrix::zigzag_to_real[] =
 	35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51,
 	58, 59, 52, 45, 38, 31, 39, 46,	53, 60, 61, 54, 47, 55, 62, 63
 };
+
+const double PI = 3.141592653589793;
+
+void apply_DCT_single_element(block_matrix &dest, const block_matrix &orig,
+		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
+{
+	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
+	//const block_matrix::element_t c_u = sqrt(((u == 0)? 1.0 : 2.0) / block_matrix::SIDE);
+	//const block_matrix::element_t c_v = sqrt(((v == 0)? 1.0 : 2.0) / block_matrix::SIDE);
+	const block_matrix::element_t c_u = sqrt(2.0 / block_matrix::SIDE);
+	const block_matrix::element_t c_v = sqrt(2.0 / block_matrix::SIDE);
+
+	block_matrix::element_t result = 0;
+	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+	{
+		for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+		{
+			const block_matrix::element_t h_cos_arg = (2 * u + 1) * x;
+			const block_matrix::element_t v_cos_arg = (2 * v + 1) * y;
+			const block_matrix::element_t element = orig.get(x,y) *
+					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
+			result += element;
+		}
+	}
+
+	result *= c_u * c_v;
+	dest.set(u, v, result);
+}
+
+block_matrix apply_DCT(const block_matrix &input)
+{
+	block_matrix result;
+
+	for (block_matrix::side_count_fast_t v = 0; v < block_matrix::SIDE; v++)
+	{
+		for (block_matrix::side_count_fast_t u = 0; u < block_matrix::SIDE; u++)
+		{
+			apply_DCT_single_element(result, input, u, v);
+		}
+	}
+
+	return result;
+}
 
 }
 
@@ -284,6 +419,8 @@ rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, 
 	uint_fast16_t y_position = 0;
 	*/
 
+	block_matrix *matrices = new block_matrix[scan.channels_amount];
+
 	for (scan_info::channel_count_t channel=0; channel<scan.channels_amount; channel++)
 	{
 		const scan_channel &scan_channel = scan.channels[channel];
@@ -294,8 +431,9 @@ rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, 
 		const bool is_negative = (number & (1 << (dc_length - 1))) == 0;
 		if (is_negative) dc_value = -(number ^ ((1 << dc_length) - 1));
 
-		block_matrix matrix;
-		matrix.set_at_zigzag(0, dc_value);
+		block_matrix dct_matrix;
+		dct_matrix.set_at_zigzag(0, dc_value);
+		matrices[channel] = apply_DCT(dct_matrix) * (4.0 / block_matrix::SIDE);
 
 		huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
 		// TODO: AC values handling
@@ -304,7 +442,74 @@ rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, 
 		std::cout << "First DC value has " << static_cast<unsigned int>(dc_length) << " bits and value "
 						<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
 		std::cout << "First AC value has value " << static_cast<unsigned int>(ac_symbol) << std::endl;
+
+		std::cout << "DCT channel matrix is:" << std::endl;
+		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		{
+			std::cout << "  [";
+			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			{
+				std::cout << dct_matrix.get(x, y) << ",\t";
+			}
+			std::cout << "]" << std::endl;
+		}
+
+		std::cout << "Resulting channel matrix is:" << std::endl;
+		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		{
+			std::cout << "  [";
+			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			{
+				std::cout << matrices[channel].get(x, y) << ",\t";
+			}
+			std::cout << "]" << std::endl;
+		}
 	}
+
+	// Assumed it is YCbCr
+	if (scan.channels_amount == 3)
+	{
+		matrices[0] += 128;
+
+		block_matrix red = matrices[0] + (matrices[2] * 1.402);
+		block_matrix green = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
+		block_matrix blue = matrices[0] + (matrices[1] * 1.772);
+
+		std::cout << "Resulting red matrix is:" << std::endl;
+		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		{
+			std::cout << "  [";
+			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			{
+				std::cout << red.get(x, y) << ",\t";
+			}
+			std::cout << "]" << std::endl;
+		}
+
+		std::cout << "Resulting green matrix is:" << std::endl;
+		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		{
+			std::cout << "  [";
+			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			{
+				std::cout << green.get(x, y) << ",\t";
+			}
+			std::cout << "]" << std::endl;
+		}
+
+		std::cout << "Resulting blue matrix is:" << std::endl;
+		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		{
+			std::cout << "  [";
+			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			{
+				std::cout << blue.get(x, y) << ",\t";
+			}
+			std::cout << "]" << std::endl;
+		}
+	}
+
+	delete[] matrices;
 
 	// TODO: This should be repeated until filling the whole image
 	return bitmap;
