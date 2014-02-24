@@ -4,6 +4,7 @@
 #include "jfif.hpp"
 #include "instream.hpp"
 #include "jpeg.hpp"
+#include "jpeg_markers.hpp"
 
 #include <iostream>
 #include <fstream>
