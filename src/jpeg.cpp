@@ -157,18 +157,48 @@ block_matrix apply_DCT(const block_matrix &input)
 	return result;
 }
 
+void setImageBlock(const bitmap &bitmap, int x_pos, int y_pos, block_matrix *components)
+{
+	const unsigned int width = bitmap.width;
+	const unsigned int height = bitmap.height;
+	const unsigned int component_amount = bitmap.components_amount;
+
+	bitmap::component_value_t *component_buffer = new bitmap::component_value_t[component_amount];
+
+	for (block_matrix::side_count_fast_t row = 0; row < block_matrix::SIDE; row++)
+	{
+		const int bitmap_row = row + y_pos;
+		if (bitmap_row >= 0 && static_cast<unsigned int>(bitmap_row) < height)
+		{
+			for (block_matrix::side_count_fast_t column = 0; column < block_matrix::SIDE; column++)
+			{
+				const int bitmap_column = column + x_pos;
+				if (bitmap_column >= 0 && static_cast<unsigned int>(bitmap_column) < width)
+				{
+					for (unsigned int index = 0; index < component_amount; index++)
+					{
+						component_buffer[index] = components[index].get(column, row);
+					}
+					bitmap.setPixel(bitmap_column, bitmap_row, component_buffer);
+				}
+			}
+		}
+	}
+
+	delete []component_buffer;
 }
 
-rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, scan_info &scan)
+}
+
+void jpeg::decode_image(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame, scan_info &scan)
 {
 	unsigned int pixels = frame.width;
 	pixels *= frame.height;
-	rgb888_color *bitmap = new rgb888_color[pixels];
 
-	/*
+	// TODO: This should be repeated until filling the whole image
+
 	uint_fast16_t x_position = 0;
 	uint_fast16_t y_position = 0;
-	*/
 
 	block_matrix *matrices = new block_matrix[scan.channels_amount];
 
@@ -222,46 +252,27 @@ rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, 
 	{
 		matrices[0] += 128;
 
-		block_matrix red = matrices[0] + (matrices[2] * 1.402);
-		block_matrix green = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
-		block_matrix blue = matrices[0] + (matrices[1] * 1.772);
+		block_matrix *rgb_components = new block_matrix[3];
+		rgb_components[0] = matrices[0] + (matrices[2] * 1.402);
+		rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
+		rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
 
-		std::cout << "Resulting red matrix is:" << std::endl;
-		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-		{
-			std::cout << "  [";
-			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-			{
-				std::cout << red.get(x, y) << ",\t";
-			}
-			std::cout << "]" << std::endl;
-		}
+		setImageBlock(bitmap, x_position, y_position, rgb_components);
 
-		std::cout << "Resulting green matrix is:" << std::endl;
-		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+		for (unsigned int index = 0; index < 3; index++)
 		{
-			std::cout << "  [";
-			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+			std::cout << "Resulting matrix " << index << " is:" << std::endl;
+			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
 			{
-				std::cout << green.get(x, y) << ",\t";
+				std::cout << "  [";
+				for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+				{
+					std::cout << rgb_components[index].get(x, y) << ",\t";
+				}
+				std::cout << "]" << std::endl;
 			}
-			std::cout << "]" << std::endl;
-		}
-
-		std::cout << "Resulting blue matrix is:" << std::endl;
-		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-		{
-			std::cout << "  [";
-			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-			{
-				std::cout << blue.get(x, y) << ",\t";
-			}
-			std::cout << "]" << std::endl;
 		}
 	}
 
 	delete[] matrices;
-
-	// TODO: This should be repeated until filling the whole image
-	return bitmap;
 }

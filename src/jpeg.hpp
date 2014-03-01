@@ -4,6 +4,7 @@
 
 #include "bounded_integers.hpp"
 #include "huffman_tables.hpp"
+#include "bitmaps.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -127,6 +128,9 @@ struct rgb888_color
 	unsigned char blue;
 };
 
-rgb888_color *decode_into_RGB_image(scan_bit_stream &stream, frame_info &frame, scan_info &scan);
+namespace jpeg
+{
+	void decode_image(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame, scan_info &scan);
+}
 
 #endif /* JPEG_HPP_ */

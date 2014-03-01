@@ -38,6 +38,10 @@ int main(int argc, char *argv[])
 		std::cout << "Unable to process file " << argv[1] << std::endl;
 		return program_result::IO_ERROR;
 	}
+	else
+	{
+		std::cout << "Processing file " << argv[1] << std::endl;
+	}
 
 	if (in_stream.get() != jpeg_marker::MARKER || in_stream.get() != jpeg_marker::START_OF_IMAGE)
 	{
@@ -209,11 +213,31 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// Preparing bitmap to allocate the image (RGB, 8 bits per channel)
+	unsigned char *image_raw_data = new unsigned char[current_frame->width * current_frame->height * 3];
+
+	bitmap_component bitmap_components[3];
+	bitmap_components[0].type = bitmap_component::RED;
+	bitmap_components[0].bits_per_pixel = 8;
+	bitmap_components[1].type = bitmap_component::GREEN;
+	bitmap_components[1].bits_per_pixel = 8;
+	bitmap_components[2].type = bitmap_component::BLUE;
+	bitmap_components[2].bits_per_pixel = 8;
+
+	bitmap bitmap;
+	bitmap.bytes_per_pixel = 3;
+	bitmap.width = current_frame->width;
+	bitmap.height = current_frame->height;
+	bitmap.bytes_per_scanline = (((bitmap.bytes_per_pixel * bitmap.width) + 3) >> 2) << 2;
+	bitmap.components_amount = 3;
+	bitmap.components = bitmap_components;
+	bitmap.data = image_raw_data;
+
 	// Scan of data begins here
 	scan_bit_stream bit_stream = (&in_stream);
 	bit_stream.prepend(value);
 
-	rgb888_color *image = decode_into_RGB_image(bit_stream, *current_frame, *current_scan);
+	jpeg::decode_image(bitmap, bit_stream, *current_frame, *current_scan);
 
 	if (in_stream.get() != jpeg_marker::MARKER || in_stream.get() != jpeg_marker::END_OF_IMAGE)
 	{
@@ -223,10 +247,6 @@ int main(int argc, char *argv[])
 	}
 
 	// Freeing resources
-	if (image != NULL) {
-		delete[] image;
-	}
-
 	if (current_scan != NULL)
 	{
 		delete current_scan;
@@ -259,5 +279,6 @@ int main(int argc, char *argv[])
 	}
 
 	in_stream.close();
+	delete []image_raw_data;
 	return program_result::OK;
 }
