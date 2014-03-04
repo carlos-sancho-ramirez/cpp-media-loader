@@ -3,7 +3,7 @@
 #define HUFFMAN_TABLES_HPP_
 
 #include "bounded_integers.hpp"
-#include "instream.hpp"
+#include "stream_utils.hpp"
 #include <iostream>
 
 class huffman_table

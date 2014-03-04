@@ -1,6 +1,6 @@
 
 #include "jpeg.hpp"
-#include "instream.hpp"
+#include "stream_utils.hpp"
 #include "huffman_tables.hpp"
 #include "block_matrix.hpp"
 #include <cmath>

@@ -1,5 +1,5 @@
 
-#include "instream.hpp"
+#include "stream_utils.hpp"
 #include "jpeg_markers.hpp"
 
 #include <cstring>
@@ -16,6 +16,45 @@ unsigned int read_big_endian_unsigned_int(std::istream &stream, unsigned int byt
 	memset(buffer, 0, sizeof(buffer));
 	stream.read(buffer + (sizeof(buffer) - bytes), bytes);
 	return ntohl(*reinterpret_cast<unsigned int *>(buffer));
+}
+
+unsigned int read_little_endian_unsigned_int(std::istream &stream, unsigned int bytes) throw(std::invalid_argument)
+{
+	if (bytes > sizeof(unsigned int) || bytes <= 0)
+	{
+		throw std::invalid_argument("[read_big_endian_unsigned_int] wrong amount of bytes entered");
+	}
+
+	char buffer[sizeof(unsigned int)];
+	memset(buffer, 0, sizeof(buffer));
+	stream.read(buffer + (sizeof(buffer) - bytes), bytes);
+
+	unsigned int result = 0;
+	for (unsigned int index = 0; index < bytes; index++)
+	{
+		int char_value = buffer[index];
+		result += ((char_value < 0)? char_value + 0x100 : char_value) << (index * 8);
+	}
+
+	return result;
+}
+
+void write_little_endian_unsigned_int(std::ostream &stream, unsigned int value, unsigned int bytes) throw(std::invalid_argument)
+{
+	if (bytes > sizeof(unsigned int) || bytes <= 0)
+	{
+		throw std::invalid_argument("[read_big_endian_unsigned_int] wrong amount of bytes entered");
+	}
+
+	char buffer[bytes];
+
+	for (unsigned int index = 0; index < bytes; index++)
+	{
+		buffer[index] = value & 0xFF;
+		value >>= 8;
+	}
+
+	stream.write(buffer, bytes);
 }
 
 scan_bit_stream::scan_bit_stream(std::istream *stream) : stream(stream), valid_bits(0)

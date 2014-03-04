@@ -2,9 +2,10 @@
 #include "conf.h"
 
 #include "jfif.hpp"
-#include "instream.hpp"
+#include "stream_utils.hpp"
 #include "jpeg.hpp"
 #include "jpeg_markers.hpp"
+#include "bmp.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -26,9 +27,9 @@ int main(int argc, char *argv[])
 			<< "This software is under the MIT License" << std::endl
 			<< "Version " PROJECT_VERSION_STR << std::endl << std::endl;
 
-	if (argc < 2)
+	if (argc < 3)
 	{
-		std::cout << "Syntax: " << argv[0] << " <file-name>" << std::endl;
+		std::cout << "Syntax: " << argv[0] << " <origin-file-name> <destination-file-name>" << std::endl;
 		return program_result::INVALID_ARGUMENTS;
 	}
 
@@ -246,7 +247,7 @@ int main(int argc, char *argv[])
 		return program_result::INVALID_FILE_FORMAT;
 	}
 
-	// Freeing resources
+	// Freeing JPEG related resources
 	if (current_scan != NULL)
 	{
 		delete current_scan;
@@ -279,6 +280,22 @@ int main(int argc, char *argv[])
 	}
 
 	in_stream.close();
+
+	// Write the result in BMP format
+	std::ofstream out_stream(argv[2]);
+	int result = program_result::OK;
+	if (out_stream.fail())
+	{
+		std::cout << "Unable to create file " << argv[2] << std::endl;
+		result = program_result::IO_ERROR;
+	}
+	else
+	{
+		std::cout << "Writing file " << argv[2] << std::endl;
+		bmp::encode_image(bitmap, out_stream);
+		out_stream.close();
+	}
+
 	delete []image_raw_data;
-	return program_result::OK;
+	return result;
 }

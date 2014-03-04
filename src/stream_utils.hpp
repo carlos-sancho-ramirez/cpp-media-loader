@@ -1,6 +1,6 @@
 
-#ifndef INSTREAM_HPP_
-#define INSTREAM_HPP_
+#ifndef STREAM_UTILS_HPP_
+#define STREAM_UTILS_HPP_
 
 #include "unsupported_feature.hpp"
 #include "bounded_integers.hpp"
@@ -8,6 +8,9 @@
 #include <stdexcept>
 
 unsigned int read_big_endian_unsigned_int(std::istream &stream, unsigned int bytes) throw(std::invalid_argument);
+unsigned int read_little_endian_unsigned_int(std::istream &stream, unsigned int bytes) throw(std::invalid_argument);
+
+void write_little_endian_unsigned_int(std::ostream &stream, unsigned int value, unsigned int bytes) throw(std::invalid_argument);
 
 /**
  * Reads the stream returning it bit per bit in a suitable way for jpeg huffman tables.
@@ -39,4 +42,4 @@ public:
 	number_t next_number(const number_bit_amount_t bits);
 };
 
-#endif /* INSTREAM_HPP_ */
+#endif /* STREAM_UTILS_HPP_ */
