@@ -59,7 +59,7 @@ struct bitmap
 	 * order of the components in the memory layout.
 	 */
 	bitmap_component *components;
-	void *data;
+	unsigned char *data;
 
 	void getRawPixel(int x, int y, unsigned char * const pixel) const;
 

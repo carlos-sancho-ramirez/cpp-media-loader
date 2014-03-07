@@ -6,11 +6,10 @@ void bitmap::getRawPixel(int x, int y, unsigned char * const pixel) const
 	if (x >= 0 && static_cast<unsigned int>(x) < width && y >= 0 && static_cast<unsigned int>(y) < height)
 	{
 		unsigned int position = y * bytes_per_scanline + x * bytes_per_pixel;
-		unsigned char *array = static_cast<unsigned char *>(data);
 
 		for (unsigned int index = 0; index < bytes_per_pixel; index++)
 		{
-			pixel[index] = array[position++];
+			pixel[index] = data[position++];
 		}
 	}
 	else
@@ -27,11 +26,10 @@ void bitmap::setRawPixel(int x, int y, const unsigned char *pixel) const
 	if (x >= 0 && static_cast<unsigned int>(x) < width && y >= 0 && static_cast<unsigned int>(y) < height)
 	{
 		unsigned int position = y * bytes_per_scanline + x * bytes_per_pixel;
-		unsigned char *array = static_cast<unsigned char *>(data);
 
 		for (unsigned int index = 0; index < bytes_per_pixel; index++)
 		{
-			array[position++] = pixel[index];
+			data[position++] = pixel[index];
 		}
 	}
 }

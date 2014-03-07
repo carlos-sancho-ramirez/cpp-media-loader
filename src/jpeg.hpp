@@ -130,7 +130,9 @@ struct rgb888_color
 
 namespace jpeg
 {
-	void decode_image(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame, scan_info &scan);
+	class invalid_file_format { };
+
+	bitmap *decode_image(std::istream &stream) throw(invalid_file_format);
 }
 
 #endif /* JPEG_HPP_ */
