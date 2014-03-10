@@ -2,6 +2,8 @@
 #ifndef BITMAPS_HPP_
 #define BITMAPS_HPP_
 
+#include "smart_pointers.hpp"
+
 struct bitmap_component
 {
 	enum
@@ -58,8 +60,8 @@ struct bitmap
 	 * Pointer to each component info. The order of this components within the array determines the
 	 * order of the components in the memory layout.
 	 */
-	bitmap_component *components;
-	unsigned char *data;
+	shared_array<bitmap_component> components;
+	shared_array<unsigned char> data;
 
 	void getRawPixel(int x, int y, unsigned char * const pixel) const;
 

@@ -451,8 +451,8 @@ bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
 	}
 
 	// Preparing bitmap to allocate the image (RGB, 8 bits per channel)
-	unsigned char *image_raw_data = new unsigned char[current_frame->width * current_frame->height * 3];
-	bitmap_component *bitmap_components = new bitmap_component[3];
+	shared_array<unsigned char> image_raw_data = shared_array<unsigned char>::make(new unsigned char[current_frame->width * current_frame->height * 3]);
+	shared_array<bitmap_component> bitmap_components = shared_array<bitmap_component>::make(new bitmap_component[3]);
 	bitmap *bm = new bitmap;
 
 	bitmap_components[0].type = bitmap_component::RED;
@@ -511,8 +511,6 @@ bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
 	if (stream.get() != jpeg_marker::MARKER || stream.get() != jpeg_marker::END_OF_IMAGE)
 	{
 		delete bm;
-		delete[] bitmap_components;
-		delete[] image_raw_data;
 		throw invalid_file_format();
 	}
 

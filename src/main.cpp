@@ -70,8 +70,6 @@ int main(int argc, char *argv[])
 		out_stream.close();
 	}
 
-	delete[] bitmap->components;
-	delete[] bitmap->data;
 	delete bitmap;
 
 	return result;
