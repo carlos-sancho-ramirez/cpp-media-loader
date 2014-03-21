@@ -3,7 +3,6 @@
 #include "jpeg_markers.hpp"
 
 #include <cstring>
-#include <arpa/inet.h>
 
 unsigned int read_big_endian_unsigned_int(std::istream &stream, unsigned int bytes) throw(std::invalid_argument)
 {
@@ -15,7 +14,15 @@ unsigned int read_big_endian_unsigned_int(std::istream &stream, unsigned int byt
 	char buffer[sizeof(unsigned int)];
 	memset(buffer, 0, sizeof(buffer));
 	stream.read(buffer + (sizeof(buffer) - bytes), bytes);
-	return ntohl(*reinterpret_cast<unsigned int *>(buffer));
+
+	unsigned int result = 0;
+	for (unsigned int index = 0; index < bytes; index++)
+	{
+		int char_value = buffer[index];
+		result += ((char_value < 0)? char_value + 0x100 : char_value) << ((bytes - index - 1) * 8);
+	}
+
+	return result;
 }
 
 unsigned int read_little_endian_unsigned_int(std::istream &stream, unsigned int bytes) throw(std::invalid_argument)
