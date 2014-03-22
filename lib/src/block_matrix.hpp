@@ -4,6 +4,8 @@
 
 #include "bounded_integers.hpp"
 
+#include <string>
+
 struct block_matrix
 {
 	enum
@@ -40,6 +42,31 @@ public:
 	block_matrix &operator-=(const element_t &value);
 	block_matrix operator+(const block_matrix &other) const;
 	block_matrix operator-(const block_matrix &other) const;
+
+	/**
+	 * Creates a new block_matrix instance whose values is the Discrete Cosinus Transformation (DCT)
+	 * of this block_matrix.
+	 */
+	block_matrix extract_dct() const;
+
+	/**
+	 * Creates a new block_matrix instance whose values is the inverse Discrete Cosinus Transformation (DCT)
+	 * of this block_matrix.
+	 *
+	 * This is the complementary method for extract_dct so executing
+	 * extract_inverse_dct(matrix.extract_dct()) should result in the original matrix plus some
+	 * precision error.
+	 */
+	block_matrix extract_inverse_dct() const;
+
+#ifdef PROJECT_DEBUG_BUILD
+
+	/**
+	 * Creates a new string holding the status for the current block_matrix
+	 */
+	std::string dump() const;
+
+#endif // PROJECT_DEBUG_BUILD
 };
 
 #endif /* BLOCK_MATRIX_HPP_ */

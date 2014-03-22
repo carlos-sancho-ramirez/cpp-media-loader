@@ -7,8 +7,6 @@
 #include "jfif.hpp"
 #include "stream_utils.hpp"
 
-#include <cmath>
-
 // Assumed for 8x8 matrixes
 const quantization_table::cell_index_fast_t zigzag_level_baseline[] =
 		{0, 1, 3, 6, 10, 15, 21, 28, 35, 41, 46, 50, 53, 55, 56};
@@ -118,48 +116,6 @@ uint_fast16_t scan_info::expected_byte_size() const
 }
 
 namespace {
-const double PI = 3.141592653589793;
-
-void apply_DCT_single_element(block_matrix &dest, const block_matrix &orig,
-		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
-{
-	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
-	//const block_matrix::element_t c_u = sqrt(((u == 0)? 1.0 : 2.0) / block_matrix::SIDE);
-	//const block_matrix::element_t c_v = sqrt(((v == 0)? 1.0 : 2.0) / block_matrix::SIDE);
-	const block_matrix::element_t c_u = sqrt(2.0 / block_matrix::SIDE);
-	const block_matrix::element_t c_v = sqrt(2.0 / block_matrix::SIDE);
-
-	block_matrix::element_t result = 0;
-	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-	{
-		for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-		{
-			const block_matrix::element_t h_cos_arg = (2 * u + 1) * x;
-			const block_matrix::element_t v_cos_arg = (2 * v + 1) * y;
-			const block_matrix::element_t element = orig.get(x,y) *
-					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
-			result += element;
-		}
-	}
-
-	result *= c_u * c_v;
-	dest.set(u, v, result);
-}
-
-block_matrix apply_DCT(const block_matrix &input)
-{
-	block_matrix result;
-
-	for (block_matrix::side_count_fast_t v = 0; v < block_matrix::SIDE; v++)
-	{
-		for (block_matrix::side_count_fast_t u = 0; u < block_matrix::SIDE; u++)
-		{
-			apply_DCT_single_element(result, input, u, v);
-		}
-	}
-
-	return result;
-}
 
 void setImageBlock(const bitmap &bitmap, int x_pos, int y_pos, block_matrix *components)
 {
@@ -216,7 +172,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 
 		block_matrix dct_matrix;
 		dct_matrix.set_at_zigzag(0, dc_value);
-		matrices[channel] = apply_DCT(dct_matrix) * (4.0 / block_matrix::SIDE);
+		matrices[channel] = dct_matrix.extract_dct() * (4.0 / block_matrix::SIDE);
 
 		huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
 		// TODO: AC values handling

@@ -1,6 +1,8 @@
 
 #include "block_matrix.hpp"
 
+#include <cmath>
+
 block_matrix::block_matrix()
 {
 	cell_count_fast_t index;
@@ -104,3 +106,107 @@ block_matrix block_matrix::operator-(const block_matrix &other) const
 
 	return result;
 }
+
+namespace
+{
+const double PI = 3.141592653589793;
+
+void apply_dct_single_element(block_matrix &dest, const block_matrix &orig,
+		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
+{
+	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
+	const block_matrix::element_t c = sqrt(4.0 / block_matrix::SIDE);
+
+	block_matrix::element_t result = 0;
+	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+	{
+		for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+		{
+			const block_matrix::element_t h_cos_arg = (2 * x + 1) * u;
+			const block_matrix::element_t v_cos_arg = (2 * y + 1) * v;
+			const block_matrix::element_t element = orig.get(x,y) *
+					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
+			result += element;
+		}
+	}
+
+	result *= c;
+	dest.set(u, v, result);
+}
+
+void apply_inverse_dct_single_element(block_matrix &dest, const block_matrix &orig,
+		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
+{
+	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
+	const block_matrix::element_t c = sqrt(4.0 / block_matrix::SIDE);
+
+	block_matrix::element_t result = 0;
+	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+	{
+		for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+		{
+			const block_matrix::element_t h_cos_arg = (2 * u + 1) * x;
+			const block_matrix::element_t v_cos_arg = (2 * v + 1) * y;
+			const block_matrix::element_t element = orig.get(x,y) *
+					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
+			result += element;
+		}
+	}
+
+	result *= c;
+	dest.set(u, v, result);
+}
+}
+
+block_matrix block_matrix::extract_dct() const
+{
+	block_matrix result;
+
+	for (block_matrix::side_count_fast_t v = 0; v < block_matrix::SIDE; v++)
+	{
+		for (block_matrix::side_count_fast_t u = 0; u < block_matrix::SIDE; u++)
+		{
+			apply_dct_single_element(result, *this, u, v);
+		}
+	}
+
+	return result;
+}
+
+block_matrix block_matrix::extract_inverse_dct() const
+{
+	block_matrix result;
+
+	for (block_matrix::side_count_fast_t v = 0; v < block_matrix::SIDE; v++)
+	{
+		for (block_matrix::side_count_fast_t u = 0; u < block_matrix::SIDE; u++)
+		{
+			apply_inverse_dct_single_element(result, *this, u, v);
+		}
+	}
+
+	return result;
+}
+
+#ifdef PROJECT_DEBUG_BUILD
+
+#include <sstream>
+#include <iostream>
+
+std::string block_matrix::dump() const
+{
+	std::stringstream stream;
+	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+	{
+		stream << "  [";
+		for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+		{
+			stream << get(x, y) << ",\t";
+		}
+		stream << "]" << std::endl;
+	}
+
+	return stream.str();
+}
+
+#endif // PROJECT_DEBUG_BUILD
