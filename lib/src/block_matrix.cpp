@@ -111,11 +111,18 @@ namespace
 {
 const double PI = 3.141592653589793;
 
+const block_matrix::element_t dct_constant_c0 = sqrt(1.0 / block_matrix::SIDE);
+const block_matrix::element_t dct_constant_cn0 = sqrt(2.0 / block_matrix::SIDE);
+const block_matrix::element_t dct_m1_constant_c0 = sqrt(1.0 / block_matrix::SIDE);
+const block_matrix::element_t dct_m1_constant_cn0 = 1 / sqrt(block_matrix::SIDE);
+const block_matrix::element_t dct_multiplying_arg = PI / (2 * block_matrix::SIDE);
+
 void apply_dct_single_element(block_matrix &dest, const block_matrix &orig,
 		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
 {
-	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
-	const block_matrix::element_t c = sqrt(4.0 / block_matrix::SIDE);
+	const block_matrix::element_t cu = (u == 0)? dct_constant_c0 : dct_constant_cn0;
+	const block_matrix::element_t cv = (v == 0)? dct_constant_c0 : dct_constant_cn0;
+	const block_matrix::element_t c = cu * cv;
 
 	block_matrix::element_t result = 0;
 	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
@@ -125,7 +132,7 @@ void apply_dct_single_element(block_matrix &dest, const block_matrix &orig,
 			const block_matrix::element_t h_cos_arg = (2 * x + 1) * u;
 			const block_matrix::element_t v_cos_arg = (2 * y + 1) * v;
 			const block_matrix::element_t element = orig.get(x,y) *
-					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
+					cos(dct_multiplying_arg * h_cos_arg) * cos(dct_multiplying_arg * v_cos_arg);
 			result += element;
 		}
 	}
@@ -137,8 +144,9 @@ void apply_dct_single_element(block_matrix &dest, const block_matrix &orig,
 void apply_inverse_dct_single_element(block_matrix &dest, const block_matrix &orig,
 		const block_matrix::side_index_fast_t u, const block_matrix::side_index_fast_t v)
 {
-	const block_matrix::element_t multiplying_arg = PI / (2 * block_matrix::SIDE);
-	const block_matrix::element_t c = sqrt(4.0 / block_matrix::SIDE);
+	const block_matrix::element_t cu = (u == 0)? dct_m1_constant_c0 : dct_m1_constant_cn0;
+	const block_matrix::element_t cv = (v == 0)? dct_m1_constant_c0 : dct_m1_constant_cn0;
+	const block_matrix::element_t c = cu * cv;
 
 	block_matrix::element_t result = 0;
 	for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
@@ -148,7 +156,7 @@ void apply_inverse_dct_single_element(block_matrix &dest, const block_matrix &or
 			const block_matrix::element_t h_cos_arg = (2 * u + 1) * x;
 			const block_matrix::element_t v_cos_arg = (2 * v + 1) * y;
 			const block_matrix::element_t element = orig.get(x,y) *
-					cos(multiplying_arg * h_cos_arg) * cos(multiplying_arg * v_cos_arg);
+					cos(dct_multiplying_arg * h_cos_arg) * cos(dct_multiplying_arg * v_cos_arg);
 			result += element;
 		}
 	}

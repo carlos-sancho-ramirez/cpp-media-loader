@@ -158,81 +158,97 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 	uint_fast16_t x_position = 0;
 	uint_fast16_t y_position = 0;
 
-	block_matrix *matrices = new block_matrix[scan.channels_amount];
-
-	for (scan_info::channel_count_t channel=0; channel<scan.channels_amount; channel++)
+	shared_array<block_matrix> matrices = shared_array<block_matrix>::make(new block_matrix[scan.channels_amount]);
+	shared_array<int> dc_values = shared_array<int>::make(new int[scan.channels_amount]);
+	for (scan_info::channel_count_t index = 0; index < scan.channels_amount; index++)
 	{
-		const scan_channel &scan_channel = scan.channels[channel];
-		huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
-		const scan_bit_stream::number_t number = stream.next_number(dc_length);
-
-		int dc_value = number;
-		const bool is_negative = (number & (1 << (dc_length - 1))) == 0;
-		if (is_negative) dc_value = -(number ^ ((1 << dc_length) - 1));
-
-		block_matrix dct_matrix;
-		dct_matrix.set_at_zigzag(0, dc_value);
-		matrices[channel] = dct_matrix.extract_dct() * (4.0 / block_matrix::SIDE);
-
-		huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
-		// TODO: AC values handling
-
-		// Temporal code to check all is fine
-		std::cout << "First DC value has " << static_cast<unsigned int>(dc_length) << " bits and value "
-						<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
-		std::cout << "First AC value has value " << static_cast<unsigned int>(ac_symbol) << std::endl;
-
-		std::cout << "DCT channel matrix is:" << std::endl;
-		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-		{
-			std::cout << "  [";
-			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-			{
-				std::cout << dct_matrix.get(x, y) << ",\t";
-			}
-			std::cout << "]" << std::endl;
-		}
-
-		std::cout << "Resulting channel matrix is:" << std::endl;
-		for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-		{
-			std::cout << "  [";
-			for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-			{
-				std::cout << matrices[channel].get(x, y) << ",\t";
-			}
-			std::cout << "]" << std::endl;
-		}
+		dc_values[index] = 0;
 	}
 
-	// Assumed it is YCbCr
-	if (scan.channels_amount == 3)
+	while (y_position < frame.height)
 	{
-		matrices[0] += 128;
-
-		block_matrix *rgb_components = new block_matrix[3];
-		rgb_components[0] = matrices[0] + (matrices[2] * 1.402);
-		rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
-		rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
-
-		setImageBlock(bitmap, x_position, y_position, rgb_components);
-
-		for (unsigned int index = 0; index < 3; index++)
+		for (scan_info::channel_count_t channel=0; channel<scan.channels_amount; channel++)
 		{
-			std::cout << "Resulting matrix " << index << " is:" << std::endl;
+			const scan_channel &scan_channel = scan.channels[channel];
+			huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
+			const scan_bit_stream::number_t number = stream.next_number(dc_length);
+
+			int dc_value = number;
+			const bool is_negative = (number & (1 << (dc_length - 1))) == 0;
+			if (is_negative) dc_value = -(number ^ ((1 << dc_length) - 1));
+			dc_value += dc_values[channel];
+			dc_values[channel] = dc_value;
+
+			block_matrix dct_matrix;
+			dct_matrix.set_at_zigzag(0, dc_value);
+			//matrices[channel] = dct_matrix.extract_dct() * (4.0 / block_matrix::SIDE);
+			matrices[channel] = dct_matrix.extract_inverse_dct();
+
+			huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
+			// TODO: AC values handling
+
+			// Temporal code to check all is fine
+			std::cout << "First DC value has " << static_cast<unsigned int>(dc_length) << " bits and value "
+					<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
+			std::cout << "First AC value has value " << static_cast<unsigned int>(ac_symbol) << std::endl;
+
+			std::cout << "DCT channel matrix is:" << std::endl;
 			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
 			{
 				std::cout << "  [";
 				for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
 				{
-					std::cout << rgb_components[index].get(x, y) << ",\t";
+					std::cout << dct_matrix.get(x, y) << ",\t";
+				}
+				std::cout << "]" << std::endl;
+			}
+
+			std::cout << "Resulting channel matrix is:" << std::endl;
+			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+			{
+				std::cout << "  [";
+				for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+				{
+					std::cout << matrices[channel].get(x, y) << ",\t";
 				}
 				std::cout << "]" << std::endl;
 			}
 		}
-	}
 
-	delete[] matrices;
+		// Assumed it is YCbCr
+		if (scan.channels_amount == 3)
+		{
+			matrices[0] += 128;
+
+			block_matrix *rgb_components = new block_matrix[3];
+			rgb_components[0] = matrices[0] + (matrices[2] * 1.402);
+			rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
+			rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
+
+			setImageBlock(bitmap, x_position, y_position, rgb_components);
+
+			for (unsigned int index = 0; index < 3; index++)
+			{
+				std::cout << "Resulting matrix " << index << " is:" << std::endl;
+				for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+				{
+					std::cout << "  [";
+					for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+					{
+						std::cout << rgb_components[index].get(x, y) << ",\t";
+					}
+					std::cout << "]" << std::endl;
+				}
+			}
+		}
+
+		x_position += block_matrix::SIDE;
+		if (x_position >= frame.width)
+		{
+			x_position = 0;
+			y_position += block_matrix::SIDE;
+		}
+	}
 }
 }
 
