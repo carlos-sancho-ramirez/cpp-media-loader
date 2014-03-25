@@ -64,7 +64,12 @@ public:
 		return data[index];
 	}
 
-	operator TYPE() const
+	operator const TYPE() const
+	{
+		return data;
+	}
+
+	TYPE * const get() const
 	{
 		return data;
 	}

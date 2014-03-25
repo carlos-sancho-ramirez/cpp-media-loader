@@ -117,7 +117,7 @@ uint_fast16_t scan_info::expected_byte_size() const
 
 namespace {
 
-void setImageBlock(const bitmap &bitmap, int x_pos, int y_pos, block_matrix *components)
+void setImageBlock(const bitmap &bitmap, int x_pos, int y_pos, const block_matrix * const components)
 {
 	const unsigned int width = bitmap.width;
 	const unsigned int height = bitmap.height;
@@ -220,12 +220,12 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 		{
 			matrices[0] += 128;
 
-			block_matrix *rgb_components = new block_matrix[3];
+			shared_array<block_matrix> rgb_components = shared_array<block_matrix>::make(new block_matrix[scan.channels_amount]);
 			rgb_components[0] = matrices[0] + (matrices[2] * 1.402);
 			rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
 			rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
 
-			setImageBlock(bitmap, x_position, y_position, rgb_components);
+			setImageBlock(bitmap, x_position, y_position, rgb_components.get());
 
 			for (unsigned int index = 0; index < 3; index++)
 			{
