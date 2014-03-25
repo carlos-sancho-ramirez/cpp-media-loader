@@ -6,6 +6,7 @@
  */
 
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <cmath>
@@ -14,15 +15,17 @@ namespace
 {
 bool test(const std::string title, void (*function)(std::ostream &))
 {
+	std::stringstream test_stream;
 	try
 	{
-		function(std::cerr);
+		function(test_stream);
 		std::cout << title << "... ok" << std::endl;
 		return true;
 	}
 	catch (...)
 	{
 		std::cout << title << "... ko" << std::endl;
+		std::cerr << test_stream.str() << std::endl;
 	}
 
 	return false;
@@ -32,12 +35,12 @@ bool test(const std::string title, void (*function)(std::ostream &))
 
 void testOK(std::ostream &stream)
 {
-	stream << "textOK executed" << std::endl;
+	stream << "textOK executed. And passed, of course!" << std::endl;
 }
 
 void testKO(std::ostream &stream)
 {
-	stream << "textKO executed" << std::endl;
+	stream << "textKO executed. And failed, of course!" << std::endl;
 	throw 0;
 }
 
@@ -75,7 +78,8 @@ void test_block_matrix_dct(std::ostream &stream, block_matrix &matrix)
 void test_block_matrix_dct(std::ostream &stream)
 {
 	block_matrix matrix;
-	matrix += 64;
+	//matrix -= 43; Y for red
+	matrix += 127; //Cr for red
 	//matrix.set(0,0, 64);
 	test_block_matrix_dct(stream, matrix);
 }
