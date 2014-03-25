@@ -63,25 +63,35 @@ block_matrix &block_matrix::operator=(const block_matrix &other)
 	return *this;
 }
 
-block_matrix &block_matrix::operator+=(const element_t &value)
-			{
+block_matrix &block_matrix::operator+=(const element_t value)
+{
 	for (cell_count_fast_t index=0; index < CELLS; index++)
 	{
 		matrix[index] += value;
 	}
 
 	return *this;
-			}
+}
 
-block_matrix &block_matrix::operator-=(const element_t &value)
-			{
+block_matrix &block_matrix::operator-=(const element_t value)
+{
 	for (cell_count_fast_t index=0; index < CELLS; index++)
 	{
 		matrix[index] -= value;
 	}
 
 	return *this;
-			}
+}
+
+block_matrix &block_matrix::operator/=(const element_t value)
+{
+	for (cell_count_fast_t index=0; index < CELLS; index++)
+	{
+		matrix[index] /= value;
+	}
+
+	return *this;
+}
 
 block_matrix block_matrix::operator+(const block_matrix &other) const
 {

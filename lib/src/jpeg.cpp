@@ -225,6 +225,12 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 			rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
 			rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
 
+			// Normalizing values from 0..255 to 0..1
+			for (scan_info::channel_count_t channel = 0; channel < scan.channels_amount; channel++)
+			{
+				rgb_components[channel] /= 255;
+			}
+
 			setImageBlock(bitmap, x_position, y_position, rgb_components.get());
 
 			for (unsigned int index = 0; index < 3; index++)

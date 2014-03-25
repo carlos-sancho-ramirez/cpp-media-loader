@@ -36,12 +36,14 @@ public:
 	element_t get(const side_index_fast_t x, const side_index_fast_t y) const;
 	void set(const side_index_fast_t x, const side_index_fast_t y, const element_t value);
 
-	block_matrix operator*(const element_t value) const;
-	block_matrix &operator=(const block_matrix &other);
-	block_matrix &operator+=(const element_t &value);
-	block_matrix &operator-=(const element_t &value);
 	block_matrix operator+(const block_matrix &other) const;
 	block_matrix operator-(const block_matrix &other) const;
+	block_matrix operator*(const element_t value) const;
+
+	block_matrix &operator=(const block_matrix &other);
+	block_matrix &operator+=(const element_t value);
+	block_matrix &operator-=(const element_t value);
+	block_matrix &operator/=(const element_t value);
 
 	/**
 	 * Creates a new block_matrix instance whose values is the Discrete Cosinus Transformation (DCT)
