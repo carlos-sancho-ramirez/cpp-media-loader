@@ -16,10 +16,10 @@ unsigned int read_big_endian_unsigned_int(std::istream &stream, unsigned int byt
 	stream.read(buffer + (sizeof(buffer) - bytes), bytes);
 
 	unsigned int result = 0;
-	for (unsigned int index = 0; index < bytes; index++)
+	for (unsigned int index = 0; index < sizeof(buffer); index++)
 	{
 		int char_value = buffer[index];
-		result += ((char_value < 0)? char_value + 0x100 : char_value) << ((bytes - index - 1) * 8);
+		result += ((char_value < 0)? char_value + 0x100 : char_value) << ((sizeof(buffer) - index - 1) * 8);
 	}
 
 	return result;
