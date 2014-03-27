@@ -35,4 +35,7 @@ $(BUILD_DIR)/test/main: test/src/main.cpp $(LIB_HEADERS) $(LIB_SOURCES)
 
 test: $(BUILD_DIR)/test/main
 
+clean:
+	rm -r $(BUILD_DIR)
+
 all: release debug test
