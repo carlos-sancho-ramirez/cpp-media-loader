@@ -13,6 +13,9 @@
 
 namespace
 {
+unsigned int passed_tests = 0;
+unsigned int failed_tests = 0;
+
 bool test(const std::string title, void (*function)(std::ostream &))
 {
 	std::stringstream test_stream;
@@ -20,12 +23,14 @@ bool test(const std::string title, void (*function)(std::ostream &))
 	{
 		function(test_stream);
 		std::cout << title << "... ok" << std::endl;
+		passed_tests++;
 		return true;
 	}
 	catch (...)
 	{
 		std::cout << title << "... ko" << std::endl;
 		std::cerr << test_stream.str() << std::endl;
+		failed_tests++;
 	}
 
 	return false;
@@ -86,7 +91,19 @@ void test_block_matrix_dct(std::ostream &stream)
 
 int main(int argc, char *argv[])
 {
-	test("test 1", testOK);
-	test("test 2", testKO);
+	std::cout << "C++ Media Loader" << std::endl
+			<< "This software is under the MIT License" << std::endl
+			<< "Version " PROJECT_VERSION_STR << std::endl
+			<< std::endl
+			<< "Running tests:" << std::endl;
+
+	test("trivial test to test the test bench", testOK);
+	//test("test 2", testKO);
 	test("test block_matrix DCT", test_block_matrix_dct);
+
+	std::cout << "Total amount of tests run: " << passed_tests + failed_tests << std::endl
+			<< "Total amount of passed tests: " << passed_tests << std::endl
+			<< "Total amount of failed tests: " << failed_tests << std::endl;
+
+	return (failed_tests != 0)? 1 : 0;
 }
