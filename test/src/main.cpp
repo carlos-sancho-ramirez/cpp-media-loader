@@ -5,6 +5,8 @@
  *      Author: Carlos Sancho Ramirez
  */
 
+#include "benches.hpp"
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -100,6 +102,21 @@ int main(int argc, char *argv[])
 	test("trivial test to test the test bench", testOK);
 	//test("test 2", testKO);
 	test("test block_matrix DCT", test_block_matrix_dct);
+
+	const test_bench_results jpeg_results = jpeg::test_bench().run();
+	const unsigned int totalJpegTests = jpeg_results.total();
+	for (unsigned int index = 0; index < totalJpegTests; index++)
+	{
+		const test_result result = jpeg_results.tests[index];
+		std::cout << result.title << "... " << (result.passed? "ok" : "ko") << std::endl;
+		if (!result.passed)
+		{
+			std::cerr << result.log << std::endl;
+		}
+	}
+
+	passed_tests += jpeg_results.passed();
+	failed_tests += jpeg_results.failed();
 
 	std::cout << "Total amount of tests run: " << passed_tests + failed_tests << std::endl
 			<< "Total amount of passed tests: " << passed_tests << std::endl

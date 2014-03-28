@@ -54,6 +54,16 @@ public:
 		return *this;
 	}
 
+	TYPE * const operator->() const
+	{
+		return data;
+	}
+
+	TYPE *operator->()
+	{
+		return data;
+	}
+
 	TYPE &operator[](const unsigned int index) const
 	{
 		return data[index];
@@ -64,7 +74,7 @@ public:
 		return data[index];
 	}
 
-	operator const TYPE() const
+	operator const TYPE *() const
 	{
 		return data;
 	}
