@@ -1,6 +1,6 @@
 
 CC=g++
-CPP_FLAGS=-Wall -fmessage-length=0 -std=c++0x
+CPP_FLAGS=-Wall -fmessage-length=0 -std=c++0x -DPROJECT_PLATFORM_UNIX
 BUILD_DIR=build
 
 LIB_DIR=lib
@@ -17,6 +17,12 @@ LIB_HPP_FILES=$(wildcard $(LIB_DIR)/$(SOURCE_SUBDIR)/*.hpp)
 LIB_HEADERS=$(LIB_H_FILES) $(LIB_HPP_FILES)
 LIB_SOURCES=$(LIB_C_FILES) $(LIB_CPP_FILES)
 
+TEST_CPP_FILES=$(wildcard $(TEST_DIR)/$(SOURCE_SUBDIR)/*.cpp)
+TEST_HPP_FILES=$(wildcard $(TEST_DIR)/$(SOURCE_SUBDIR)/*.hpp)
+
+TEST_HEADERS=$(TEST_HPP_FILES)
+TEST_SOURCES=$(TEST_CPP_FILES)
+
 $(BUILD_DIR)/release/jpg2bmp: $(EXEC_DIR)/$(SOURCE_SUBDIR)/main.cpp $(LIB_HEADERS) $(LIB_SOURCES)
 	mkdir -p $(BUILD_DIR)/release
 	$(CC) -O3 $(CPP_FLAGS) -I$(LIB_DIR)/$(SOURCE_SUBDIR) -o $@ $(EXEC_DIR)/$(SOURCE_SUBDIR)/main.cpp $(LIB_SOURCES)
@@ -29,9 +35,9 @@ $(BUILD_DIR)/debug/jpg2bmp: $(EXEC_DIR)/$(SOURCE_SUBDIR)/main.cpp $(LIB_HEADERS)
 
 debug: $(BUILD_DIR)/debug/jpg2bmp
 
-$(BUILD_DIR)/test/main: test/src/main.cpp $(LIB_HEADERS) $(LIB_SOURCES)
+$(BUILD_DIR)/test/main: $(TEST_HEADERS) $(TEST_SOURCES) $(LIB_HEADERS) $(LIB_SOURCES)
 	mkdir -p $(BUILD_DIR)/test
-	$(CC) -DPROJECT_DEBUG_BUILD -O0 -g3 $(CPP_FLAGS) -I$(LIB_DIR)/$(SOURCE_SUBDIR) -o $@ $(TEST_DIR)/$(SOURCE_SUBDIR)/main.cpp $(LIB_SOURCES)
+	$(CC) -DPROJECT_DEBUG_BUILD -O0 -g3 $(CPP_FLAGS) -I$(LIB_DIR)/$(SOURCE_SUBDIR) -o $@ $(TEST_SOURCES) $(LIB_SOURCES)
 
 test: $(BUILD_DIR)/test/main
 
