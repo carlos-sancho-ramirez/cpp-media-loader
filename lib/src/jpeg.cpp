@@ -258,7 +258,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 }
 }
 
-bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
+void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file_format)
 {
 	if (stream.get() != jpeg_marker::MARKER || stream.get() != jpeg_marker::START_OF_IMAGE)
 	{
@@ -431,7 +431,6 @@ bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
 	// Preparing bitmap to allocate the image (RGB, 8 bits per channel)
 	shared_array<unsigned char> image_raw_data = shared_array<unsigned char>::make(new unsigned char[current_frame->width * current_frame->height * 3]);
 	shared_array<bitmap_component> bitmap_components = shared_array<bitmap_component>::make(new bitmap_component[3]);
-	bitmap *bm = new bitmap;
 
 	bitmap_components[0].type = bitmap_component::RED;
 	bitmap_components[0].bits_per_pixel = 8;
@@ -440,19 +439,19 @@ bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
 	bitmap_components[2].type = bitmap_component::BLUE;
 	bitmap_components[2].bits_per_pixel = 8;
 
-	bm->bytes_per_pixel = 3;
-	bm->width = current_frame->width;
-	bm->height = current_frame->height;
-	bm->bytes_per_scanline = (((bm->bytes_per_pixel * bm->width) + 3) >> 2) << 2;
-	bm->components_amount = 3;
-	bm->components = bitmap_components;
-	bm->data = image_raw_data;
+	bitmap.bytes_per_pixel = 3;
+	bitmap.width = current_frame->width;
+	bitmap.height = current_frame->height;
+	bitmap.bytes_per_scanline = (((bitmap.bytes_per_pixel * bitmap.width) + 3) >> 2) << 2;
+	bitmap.components_amount = 3;
+	bitmap.components = bitmap_components;
+	bitmap.data = image_raw_data;
 
 	// Scan of data begins here
 	scan_bit_stream bit_stream = (&stream);
 	bit_stream.prepend(value);
 
-	decode_scan_data(*bm, bit_stream, *current_frame, *current_scan);
+	decode_scan_data(bitmap, bit_stream, *current_frame, *current_scan);
 
 	// Freeing JPEG related resources
 	if (current_scan != NULL)
@@ -488,9 +487,6 @@ bitmap *jpeg::decode_image(std::istream &stream) throw(invalid_file_format)
 
 	if (stream.get() != jpeg_marker::MARKER || stream.get() != jpeg_marker::END_OF_IMAGE)
 	{
-		delete bm;
 		throw invalid_file_format();
 	}
-
-	return bm;
 }

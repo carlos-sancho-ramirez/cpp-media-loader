@@ -41,10 +41,10 @@ int main(int argc, char *argv[])
 		std::cout << "Processing file " << argv[1] << std::endl;
 	}
 
-	bitmap *bitmap = NULL;
+	bitmap bitmap;
 	try
 	{
-		bitmap = jpeg::decode_image(in_stream);
+		jpeg::decode_image(bitmap, in_stream);
 	}
 	catch (jpeg::invalid_file_format)
 	{
@@ -66,11 +66,9 @@ int main(int argc, char *argv[])
 	else
 	{
 		std::cout << "Writing file " << argv[2] << std::endl;
-		bmp::encode_image(*bitmap, out_stream);
+		bmp::encode_image(bitmap, out_stream);
 		out_stream.close();
 	}
-
-	delete bitmap;
 
 	return result;
 }
