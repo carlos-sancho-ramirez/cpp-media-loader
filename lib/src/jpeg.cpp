@@ -171,27 +171,39 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 		{
 			const scan_channel &scan_channel = scan.channels[channel];
 			huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
-			const scan_bit_stream::number_t number = stream.next_number(dc_length);
+			scan_bit_stream::number_t dc_value = stream.next_number(dc_length);
 
-			int dc_value = number;
-			const bool is_negative = (number & (1 << (dc_length - 1))) == 0;
-			if (is_negative) dc_value = -(number ^ ((1 << dc_length) - 1));
 			dc_value += dc_values[channel];
 			dc_values[channel] = dc_value;
 
 			block_matrix dct_matrix;
 			dct_matrix.set_at_zigzag(0, dc_value);
-			//matrices[channel] = dct_matrix.extract_dct() * (4.0 / block_matrix::SIDE);
+
+			unsigned char ac_length;
+			unsigned char previous_zeroes;
+			block_matrix::cell_index_fast_t read_cells = 0;
+			do
+			{
+				huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
+				ac_length = ac_symbol & 0x0F;
+				previous_zeroes = (ac_symbol >> 4) & 0x0F;
+
+				if (previous_zeroes + read_cells + 1 >= block_matrix::CELLS)
+				{
+					throw jpeg::invalid_file_format();
+				}
+				read_cells += previous_zeroes + 1;
+
+				if (ac_length != 0)
+				{
+					const scan_bit_stream::number_t ac_value = stream.next_number(ac_length);
+					dct_matrix.set_at_zigzag(read_cells, ac_value);
+				}
+			} while((ac_length > 0 || previous_zeroes > 0) && read_cells < block_matrix::CELLS - 1);
+
 			matrices[channel] = dct_matrix.extract_inverse_dct();
 
-			huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
-			// TODO: AC values handling
-
 			// Temporal code to check all is fine
-			std::cout << "First DC value has " << static_cast<unsigned int>(dc_length) << " bits and value "
-					<< dc_value << " (number=" << static_cast<unsigned int>(number) << ")" << std::endl;
-			std::cout << "First AC value has value " << static_cast<unsigned int>(ac_symbol) << std::endl;
-
 			std::cout << "DCT channel matrix is:" << std::endl;
 			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
 			{

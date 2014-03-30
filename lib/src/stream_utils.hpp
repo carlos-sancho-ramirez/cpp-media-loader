@@ -31,14 +31,27 @@ class scan_bit_stream
 	last_t last;
 	typename bounded_integer<0, BUFFER_BITS>::fast valid_bits;
 
+	typedef int raw_number_t;
+
 public:
-	typedef unsigned int number_t;
+	typedef int number_t;
 	typedef typename bounded_integer<0, sizeof(number_t) * 8>::fast number_bit_amount_t;
 
 public:
 	scan_bit_stream(std::istream *stream);
 	void prepend(const unsigned char value);
 	unsigned char next_bit() throw(unsupported_feature);
+
+private:
+	raw_number_t next_raw_number(const number_bit_amount_t bits);
+
+public:
+	/**
+	 * Extracts the following number from the scan stream that matches the given amount of bits.
+	 * The number is processed as the JPEG standard suggests. If the first bit is 1 that will mean
+	 * that the number is positive and matches extractly the raw number, but in case of 0, it will
+	 * be negative and must be negated to get the expected value.
+	 */
 	number_t next_number(const number_bit_amount_t bits);
 };
 

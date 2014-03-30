@@ -94,12 +94,31 @@ unsigned char scan_bit_stream::next_bit() throw(unsupported_feature)
 	return (last >> --valid_bits) & 1;
 }
 
-scan_bit_stream::number_t scan_bit_stream::next_number(const number_bit_amount_t bits)
+scan_bit_stream::raw_number_t scan_bit_stream::next_raw_number(const number_bit_amount_t bits)
 {
-	number_t result = 0;
+	raw_number_t result = 0;
 	for (number_bit_amount_t bit = 0; bit < bits; bit++)
 	{
 		result = (result << 1) + next_bit();
+	}
+
+	return result;
+}
+
+scan_bit_stream::number_t scan_bit_stream::next_number(const number_bit_amount_t bits)
+{
+	raw_number_t raw = next_raw_number(bits);
+
+	const bool is_negative = (raw & (1 << (bits - 1))) == 0;
+	number_t result;
+
+	if (is_negative)
+	{
+		result = -(raw ^ ((1 << bits) - 1));
+	}
+	else
+	{
+		result = raw;
 	}
 
 	return result;

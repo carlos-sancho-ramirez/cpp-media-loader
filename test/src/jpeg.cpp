@@ -78,8 +78,8 @@ void test_file(std::ostream &stream, const std::string &filename, const unsigned
 	}
 }
 
-const float color_high_threshold = 0.8f;
-const float color_low_threshold = 0.2f;
+const float color_high_threshold = 0.7f;
+const float color_low_threshold = 0.3f;
 
 void test_black_8x8_file(std::ostream &stream)
 {
@@ -158,6 +158,32 @@ void test_2x2_plain_blocks(std::ostream &stream)
 	});
 }
 
+void test_black_white_8x8_file(std::ostream &stream)
+{
+	const unsigned int expectedComponentAmount = 3;
+	test_file(stream, "black_white_8x8.jpg", 8, 8, expectedComponentAmount,
+			[&] (int column, int row, bitmap::component_value_t *components)
+	{
+		const unsigned int x_slot = column / 2;
+		const unsigned int y_slot = row / 2;
+		const bool isWhite = ((x_slot + y_slot) & 1) != 0;
+
+		for (unsigned int component = 0; component < expectedComponentAmount; component++)
+		{
+			if (isWhite)
+			{
+				ASSERT(components[component] > color_high_threshold,
+						"Found a pixel that is not white in the white area", stream);
+			}
+			else
+			{
+				ASSERT(components[component] < color_low_threshold,
+						"Found a pixel that is not black in the black area", stream);
+			}
+		}
+	});
+}
+
 }
 
 const test_bench_results jpeg::test_bench::run() throw()
@@ -168,6 +194,7 @@ const test_bench_results jpeg::test_bench::run() throw()
 	vector.push_back(test("test for red 8x8 matrix jpeg file", test_red_8x8_file));
 	vector.push_back(test("test for green 8x8 matrix jpeg file", test_green_8x8_file));
 	vector.push_back(test("test for 2x2 plain colors blocks", test_2x2_plain_blocks));
+	vector.push_back(test("test for mixed black white 8x8 jpeg file", test_black_white_8x8_file));
 
 	test_result *tests = new test_result[vector.size()];
 	test_bench_results result(vector.size(), tests);
