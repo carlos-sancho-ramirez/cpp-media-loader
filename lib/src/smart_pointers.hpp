@@ -54,16 +54,6 @@ public:
 		return *this;
 	}
 
-	TYPE * const operator->() const
-	{
-		return data;
-	}
-
-	TYPE *operator->()
-	{
-		return data;
-	}
-
 	TYPE &operator[](const unsigned int index) const
 	{
 		return data[index];
