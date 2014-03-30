@@ -54,18 +54,16 @@ void decode_image(bitmap &bitmap, std::ostream &stream, const std::string &filen
 		throw 0; \
 	}
 
-void test_8x8_file(std::ostream &stream, const std::string &filename, const unsigned int expectedComponentAmount,
+void test_file(std::ostream &stream, const std::string &filename, const unsigned int expectedWidth,
+		const unsigned int expectedHeight, const unsigned int expectedComponentAmount,
 		const std::function<void (int column, int row, bitmap::component_value_t *components)> &lambda_check)
 {
-	const unsigned int expectedWidth = 8;
-	const unsigned int expectedHeight = 8;
-
 	bitmap bitmap;
 	decode_image(bitmap, stream, filename);
 
 	ASSERT(bitmap.components_amount == expectedComponentAmount, "Invalid amount of components", stream);
-	ASSERT(bitmap.width == expectedWidth, "Expected width was 8", stream);
-	ASSERT(bitmap.height == expectedHeight, "Expected height was 8", stream);
+	ASSERT(bitmap.width == expectedWidth, "Invalid width", stream);
+	ASSERT(bitmap.height == expectedHeight, "Invalid height", stream);
 
 	shared_array<bitmap::component_value_t> components =
 			shared_array<bitmap::component_value_t>::make(new bitmap::component_value_t[expectedComponentAmount]);
@@ -86,7 +84,8 @@ const float color_low_threshold = 0.2f;
 void test_black_8x8_file(std::ostream &stream)
 {
 	const unsigned int expectedComponentAmount = 3;
-	test_8x8_file(stream, "black8x8.jpg", expectedComponentAmount, [&] (int column, int row, bitmap::component_value_t *components)
+	test_file(stream, "black8x8.jpg", 8, 8, expectedComponentAmount,
+			[&] (int column, int row, bitmap::component_value_t *components)
 	{
 		for (unsigned int component = 0; component < expectedComponentAmount; component++)
 		{
@@ -98,7 +97,7 @@ void test_black_8x8_file(std::ostream &stream)
 void test_white_8x8_file(std::ostream &stream)
 {
 	const unsigned int expectedComponentAmount = 3;
-	test_8x8_file(stream, "white8x8.jpg", expectedComponentAmount,
+	test_file(stream, "white8x8.jpg", 8, 8, expectedComponentAmount,
 			[&] (int column, int row, bitmap::component_value_t *components)
 	{
 		for (unsigned int component = 0; component < expectedComponentAmount; component++)
@@ -111,7 +110,7 @@ void test_white_8x8_file(std::ostream &stream)
 void test_red_8x8_file(std::ostream &stream)
 {
 	const unsigned int expectedComponentAmount = 3;
-	test_8x8_file(stream, "red8x8.jpg", expectedComponentAmount,
+	test_file(stream, "red8x8.jpg", 8, 8, expectedComponentAmount,
 			[&] (int column, int row, bitmap::component_value_t *components)
 	{
 		ASSERT(components[0] > color_high_threshold && components[1] < color_low_threshold &&
@@ -122,11 +121,40 @@ void test_red_8x8_file(std::ostream &stream)
 void test_green_8x8_file(std::ostream &stream)
 {
 	const unsigned int expectedComponentAmount = 3;
-	test_8x8_file(stream, "green8x8.jpg", expectedComponentAmount,
+	test_file(stream, "green8x8.jpg", 8, 8, expectedComponentAmount,
 			[&] (int column, int row, bitmap::component_value_t *components)
 	{
 		ASSERT(components[0] < color_low_threshold && components[1] > color_high_threshold &&
 				components[2] < color_low_threshold, "Found pixels that are not green", stream);
+	});
+}
+
+void test_2x2_plain_blocks(std::ostream &stream)
+{
+	const unsigned int expectedComponentAmount = 3;
+	test_file(stream, "colors_dc16x16.jpg", 16, 16, expectedComponentAmount,
+			[&] (int column, int row, bitmap::component_value_t *components)
+	{
+		if (column < 8 && row < 8)
+		{
+			ASSERT(components[0] > color_high_threshold && components[1] < color_low_threshold &&
+					components[2] < color_low_threshold, "Upper-left corner has pixels that are not red", stream);
+		}
+		else if (column >= 8 && row < 8)
+		{
+			ASSERT(components[0] < color_low_threshold && components[1] > color_high_threshold &&
+					components[2] < color_low_threshold, "Upper-right corner has pixels that are not green", stream);
+		}
+		else if (column < 8 && row >= 8)
+		{
+			ASSERT(components[0] > color_high_threshold && components[1] > color_high_threshold &&
+					components[2] < color_low_threshold, "Lower-left corner has pixels that are not yellow", stream);
+		}
+		else
+		{
+			ASSERT(components[0] < color_low_threshold && components[1] < color_low_threshold &&
+					components[2] > color_high_threshold, "Lower-right corner has pixels that are not blue", stream);
+		}
 	});
 }
 
@@ -139,6 +167,7 @@ const test_bench_results jpeg::test_bench::run() throw()
 	vector.push_back(test("test for white 8x8 matrix jpeg file", test_white_8x8_file));
 	vector.push_back(test("test for red 8x8 matrix jpeg file", test_red_8x8_file));
 	vector.push_back(test("test for green 8x8 matrix jpeg file", test_green_8x8_file));
+	vector.push_back(test("test for 2x2 plain colors blocks", test_2x2_plain_blocks));
 
 	test_result *tests = new test_result[vector.size()];
 	test_bench_results result(vector.size(), tests);
