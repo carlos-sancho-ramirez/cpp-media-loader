@@ -82,12 +82,31 @@ void test_block_matrix_dct(std::ostream &stream, block_matrix &matrix)
 	}
 }
 
-void test_block_matrix_dct(std::ostream &stream)
+void test_plain_block_matrix_dct(std::ostream &stream)
 {
 	block_matrix matrix;
 	//matrix -= 43; Y for red
 	matrix += 127; //Cr for red
 	//matrix.set(0,0, 64);
+	test_block_matrix_dct(stream, matrix);
+}
+
+void test_black_white_block_matrix_dct(std::ostream &stream)
+{
+	block_matrix matrix;
+
+	for (block_matrix::side_count_fast_t row = 0; row < block_matrix::SIDE; row++)
+	{
+		for (block_matrix::side_count_fast_t column = 0; column < block_matrix::SIDE; column++)
+		{
+			unsigned int x_slot = column >> 1;
+			unsigned int y_slot = row >> 1;
+			bool isWhite = ((x_slot + y_slot) & 1) != 0;
+
+			matrix.set(column, row, isWhite? 127 : -128);
+		}
+	}
+
 	test_block_matrix_dct(stream, matrix);
 }
 
@@ -101,7 +120,8 @@ int main(int argc, char *argv[])
 
 	test("trivial test to test the test bench", testOK);
 	//test("test 2", testKO);
-	test("test block_matrix DCT", test_block_matrix_dct);
+	test("test plain block_matrix DCT", test_plain_block_matrix_dct);
+	test("test black and white block_matrix DCT", test_black_white_block_matrix_dct);
 
 	const test_bench_results jpeg_results = jpeg::test_bench().run();
 	const unsigned int totalJpegTests = jpeg_results.total();

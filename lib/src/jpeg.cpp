@@ -203,6 +203,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 
 			matrices[channel] = dct_matrix.extract_inverse_dct();
 
+			/*
 			// Temporal code to check all is fine
 			std::cout << "DCT channel matrix is:" << std::endl;
 			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
@@ -225,6 +226,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 				}
 				std::cout << "]" << std::endl;
 			}
+			*/
 		}
 
 		// Assumed it is YCbCr
@@ -245,6 +247,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 
 			setImageBlock(bitmap, x_position, y_position, rgb_components.get());
 
+			/*
 			for (unsigned int index = 0; index < 3; index++)
 			{
 				std::cout << "Resulting matrix " << index << " is:" << std::endl;
@@ -258,6 +261,7 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 					std::cout << "]" << std::endl;
 				}
 			}
+			*/
 		}
 
 		x_position += block_matrix::SIDE;
@@ -321,7 +325,7 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 					std::cout << "Found quantization table with id "
 							<< static_cast<unsigned int>(table_id) << std::endl;
 					tables.list[table_id] = new quantization_table(stream);
-					tables.list[table_id]->print(std::cout);
+					//tables.list[table_id]->print(std::cout);
 				}
 			}
 			else

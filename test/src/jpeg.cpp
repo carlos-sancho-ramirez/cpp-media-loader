@@ -78,8 +78,8 @@ void test_file(std::ostream &stream, const std::string &filename, const unsigned
 	}
 }
 
-const float color_high_threshold = 0.7f;
-const float color_low_threshold = 0.3f;
+const float color_high_threshold = 0.8f;
+const float color_low_threshold = 0.2f;
 
 void test_black_8x8_file(std::ostream &stream)
 {
