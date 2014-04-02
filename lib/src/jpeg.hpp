@@ -5,6 +5,7 @@
 #include "bounded_integers.hpp"
 #include "huffman_tables.hpp"
 #include "bitmaps.hpp"
+#include "block_matrix.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -34,6 +35,8 @@ private:
 public:
 	quantization_table(std::istream &stream);
 	void print(std::ostream &stream);
+
+	void multiply_block(block_matrix &block) const;
 };
 
 template<class TABLE_TYPE>
@@ -94,8 +97,13 @@ struct scan_channel : public basic_channel
 
 struct basic_info
 {
-	typedef bounded_integer<0,255>::fast channel_index_t;
-	typedef bounded_integer<0,256>::fast channel_count_t;
+	enum
+	{
+		MAX_CHANNEL_AMOUNT = 256
+	};
+
+	typedef bounded_integer<0,MAX_CHANNEL_AMOUNT - 1>::fast channel_index_t;
+	typedef bounded_integer<0,MAX_CHANNEL_AMOUNT>::fast channel_count_t;
 
 	channel_count_t channels_amount;
 	virtual uint_fast16_t expected_byte_size() const = 0;

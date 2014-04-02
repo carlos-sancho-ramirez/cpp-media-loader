@@ -52,6 +52,20 @@ void quantization_table::print(std::ostream &stream)
 	}
 }
 
+void quantization_table::multiply_block(block_matrix &block) const
+{
+	cell_count_fast_t index = 0;
+	for (block_matrix::side_count_fast_t row = 0; row < block_matrix::SIDE; row++)
+	{
+		for (block_matrix::side_count_fast_t column = 0; column < block_matrix::SIDE; column++)
+		{
+			block_matrix::element_t value = block.get(column, row);
+			value *= matrix[index++];
+			block.set(column, row, value);
+		}
+	}
+}
+
 frame_info::frame_info(std::istream &stream, const table_list<quantization_table> &tables)
 {
 	precision = stream.get();
@@ -153,12 +167,32 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 	unsigned int pixels = frame.width;
 	pixels *= frame.height;
 
-	// TODO: This should be repeated until filling the whole image
-
 	uint_fast16_t x_position = 0;
 	uint_fast16_t y_position = 0;
 
-	shared_array<block_matrix> matrices = shared_array<block_matrix>::make(new block_matrix[scan.channels_amount]);
+	unsigned int matrices_per_iteration = 0;
+	unsigned int h_matrices_per_iteration = 1;
+	unsigned int v_matrices_per_iteration = 1;
+	for (frame_info::channel_count_t index = 0; index < frame.channels_amount; index++)
+	{
+		const frame_channel &channel = frame.channels[index];
+		const frame_channel::uint_fast4_t h_sample = channel.horizontal_sample;
+		const frame_channel::uint_fast4_t v_sample = channel.vertical_sample;
+
+		matrices_per_iteration += h_sample * v_sample;
+
+		if (h_sample > h_matrices_per_iteration)
+		{
+			h_matrices_per_iteration = h_sample;
+		}
+
+		if (v_sample > v_matrices_per_iteration)
+		{
+			v_matrices_per_iteration = v_sample;
+		}
+	}
+
+	shared_array<block_matrix> matrices = shared_array<block_matrix>::make(new block_matrix[matrices_per_iteration]);
 	shared_array<int> dc_values = shared_array<int>::make(new int[scan.channels_amount]);
 	for (scan_info::channel_count_t index = 0; index < scan.channels_amount; index++)
 	{
@@ -167,108 +201,141 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 
 	while (y_position < frame.height)
 	{
+		unsigned int matrix_index = 0;
+
 		for (scan_info::channel_count_t channel=0; channel<scan.channels_amount; channel++)
 		{
-			const scan_channel &scan_channel = scan.channels[channel];
-			huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
-			scan_bit_stream::number_t dc_value = stream.next_number(dc_length);
-
-			dc_value += dc_values[channel];
-			dc_values[channel] = dc_value;
-
-			block_matrix dct_matrix;
-			dct_matrix.set_at_zigzag(0, dc_value);
-
-			unsigned char ac_length;
-			unsigned char previous_zeroes;
-			block_matrix::cell_index_fast_t read_cells = 0;
-			do
+			const frame_channel &frame_channel = frame.channels[channel];
+			for (frame_channel::uint_fast4_t v_sample = 0; v_sample < frame_channel.vertical_sample; v_sample++)
 			{
-				huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
-				ac_length = ac_symbol & 0x0F;
-				previous_zeroes = (ac_symbol >> 4) & 0x0F;
-
-				if (previous_zeroes + read_cells + 1 >= block_matrix::CELLS)
+				for (frame_channel::uint_fast4_t h_sample = 0; h_sample < frame_channel.horizontal_sample; h_sample++)
 				{
-					throw jpeg::invalid_file_format();
-				}
-				read_cells += previous_zeroes + 1;
+					const scan_channel &scan_channel = scan.channels[channel];
+					huffman_table::symbol_value_t dc_length = scan_channel.dc_table->next_symbol(stream);
+					scan_bit_stream::number_t dc_value = stream.next_number(dc_length);
 
-				if (ac_length != 0)
-				{
-					const scan_bit_stream::number_t ac_value = stream.next_number(ac_length);
-					dct_matrix.set_at_zigzag(read_cells, ac_value);
-				}
-			} while((ac_length > 0 || previous_zeroes > 0) && read_cells < block_matrix::CELLS - 1);
+					dc_value += dc_values[channel];
+					dc_values[channel] = dc_value;
 
-			matrices[channel] = dct_matrix.extract_inverse_dct();
+					block_matrix dct_matrix;
+					dct_matrix.set_at_zigzag(0, dc_value);
 
-			/*
-			// Temporal code to check all is fine
-			std::cout << "DCT channel matrix is:" << std::endl;
-			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-			{
-				std::cout << "  [";
-				for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-				{
-					std::cout << dct_matrix.get(x, y) << ",\t";
+					unsigned char ac_length;
+					unsigned char previous_zeroes;
+					block_matrix::cell_index_fast_t read_cells = 0;
+					do
+					{
+						huffman_table::symbol_value_t ac_symbol = scan_channel.ac_table->next_symbol(stream);
+						ac_length = ac_symbol & 0x0F;
+						previous_zeroes = (ac_symbol >> 4) & 0x0F;
+
+						if (previous_zeroes + read_cells + 1 >= block_matrix::CELLS)
+						{
+							throw jpeg::invalid_file_format();
+						}
+						read_cells += previous_zeroes + 1;
+
+						if (ac_length != 0)
+						{
+							const scan_bit_stream::number_t ac_value = stream.next_number(ac_length);
+							dct_matrix.set_at_zigzag(read_cells, ac_value);
+						}
+					} while((ac_length > 0 || previous_zeroes > 0) && read_cells < block_matrix::CELLS - 1);
+
+					frame_channel.table->multiply_block(dct_matrix);
+					matrices[matrix_index++] = dct_matrix.extract_inverse_dct();
+
+					/*
+					// Temporal code to check all is fine
+					std::cout << "DCT channel matrix is:" << std::endl;
+					for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+					{
+						std::cout << "  [";
+						for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+						{
+							std::cout << dct_matrix.get(x, y) << ",\t";
+						}
+						std::cout << "]" << std::endl;
+					}
+
+					std::cout << "Resulting channel matrix is:" << std::endl;
+					for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+					{
+						std::cout << "  [";
+						for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+						{
+							std::cout << matrices[channel].get(x, y) << ",\t";
+						}
+						std::cout << "]" << std::endl;
+					}
+					*/
 				}
-				std::cout << "]" << std::endl;
 			}
-
-			std::cout << "Resulting channel matrix is:" << std::endl;
-			for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-			{
-				std::cout << "  [";
-				for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-				{
-					std::cout << matrices[channel].get(x, y) << ",\t";
-				}
-				std::cout << "]" << std::endl;
-			}
-			*/
 		}
 
 		// Assumed it is YCbCr
 		if (scan.channels_amount == 3)
 		{
-			matrices[0] += 128;
+			block_matrix ycbcr_components[3];
+			block_matrix rgb_components[3];
 
-			shared_array<block_matrix> rgb_components = shared_array<block_matrix>::make(new block_matrix[scan.channels_amount]);
-			rgb_components[0] = matrices[0] + (matrices[2] * 1.402);
-			rgb_components[1] = matrices[0] - (matrices[1] * 0.034414) - (matrices[2] * 0.71414);
-			rgb_components[2] = matrices[0] + (matrices[1] * 1.772);
-
-			// Normalizing values from 0..255 to 0..1
-			for (scan_info::channel_count_t channel = 0; channel < scan.channels_amount; channel++)
+			for (unsigned int y_on_iteration = 0; y_on_iteration < v_matrices_per_iteration; y_on_iteration++)
 			{
-				rgb_components[channel] /= 255;
-			}
-
-			setImageBlock(bitmap, x_position, y_position, rgb_components.get());
-
-			/*
-			for (unsigned int index = 0; index < 3; index++)
-			{
-				std::cout << "Resulting matrix " << index << " is:" << std::endl;
-				for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+				for (unsigned int x_on_iteration = 0; x_on_iteration < h_matrices_per_iteration; x_on_iteration++)
 				{
-					std::cout << "  [";
-					for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+					// TODO: ycbcr should be filled stretching matrices
+					unsigned int channel_matrix_index = 0;
+					for (frame_info::channel_count_t channel_index = 0; channel_index < frame.channels_amount; channel_index++)
 					{
-						std::cout << rgb_components[index].get(x, y) << ",\t";
+						const frame_channel &channel = frame.channels[channel_index];
+						const frame_channel::uint_fast4_t h_sample = channel.horizontal_sample;
+						const frame_channel::uint_fast4_t v_sample = channel.vertical_sample;
+
+						unsigned int x = (x_on_iteration < h_sample)? x_on_iteration : h_sample - 1;
+						unsigned int y = (y_on_iteration < v_sample)? y_on_iteration : v_sample - 1;
+
+						ycbcr_components[channel_index] = matrices[channel_matrix_index + y * h_sample + x];
+						channel_matrix_index += h_sample * v_sample;
 					}
-					std::cout << "]" << std::endl;
+
+					ycbcr_components[0] += 128;
+
+					rgb_components[0] = ycbcr_components[0] + (ycbcr_components[2] * 1.402);
+					rgb_components[1] = ycbcr_components[0] - (ycbcr_components[1] * 0.034414) - (ycbcr_components[2] * 0.71414);
+					rgb_components[2] = ycbcr_components[0] + (ycbcr_components[1] * 1.772);
+
+					// Normalizing values from 0..255 to 0..1
+					for (scan_info::channel_count_t channel = 0; channel < scan.channels_amount; channel++)
+					{
+						rgb_components[channel] /= 255;
+					}
+
+					setImageBlock(bitmap, x_position + x_on_iteration * block_matrix::SIDE, y_position + y_on_iteration * block_matrix::SIDE, rgb_components);
+
+					/*
+					for (unsigned int index = 0; index < 3; index++)
+					{
+						std::cout << "Resulting matrix " << index << " is:" << std::endl;
+						for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
+						{
+							std::cout << "  [";
+							for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
+							{
+								std::cout << rgb_components[index].get(x, y) << ",\t";
+							}
+							std::cout << "]" << std::endl;
+						}
+					}
+					*/
 				}
 			}
-			*/
 		}
 
-		x_position += block_matrix::SIDE;
+		x_position += block_matrix::SIDE * h_matrices_per_iteration;
 		if (x_position >= frame.width)
 		{
 			x_position = 0;
-			y_position += block_matrix::SIDE;
+			y_position += block_matrix::SIDE * v_matrices_per_iteration;
 		}
 	}
 }

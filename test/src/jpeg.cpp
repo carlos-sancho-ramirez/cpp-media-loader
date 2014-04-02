@@ -158,6 +158,50 @@ void test_2x2_plain_blocks(std::ostream &stream)
 	});
 }
 
+void test_subsample_422_file(std::ostream &stream)
+{
+	const unsigned int expectedComponentAmount = 3;
+	test_file(stream, "black_white_plain_block_compressed_16x16.jpg", 16, 16, expectedComponentAmount,
+			[&] (int column, int row, bitmap::component_value_t *components)
+	{
+		const bool isWhite = (((column >> 3) + (row >> 3)) & 1) != 0;
+
+		for (unsigned int component = 0; component < expectedComponentAmount; component++)
+		{
+			if (isWhite)
+			{
+				ASSERT(components[component] > color_high_threshold, "Expected white pixel", stream);
+			}
+			else
+			{
+				ASSERT(components[component] < color_low_threshold, "Expected black pixel", stream);
+			}
+		}
+	});
+}
+
+void test_subsample_422_Y12_file(std::ostream &stream)
+{
+	const unsigned int expectedComponentAmount = 3;
+	test_file(stream, "black_white_plain_block_compressed_16x16_Y12.jpg", 16, 16, expectedComponentAmount,
+			[&] (int column, int row, bitmap::component_value_t *components)
+	{
+		const bool isWhite = (((column >> 3) + (row >> 3)) & 1) != 0;
+
+		for (unsigned int component = 0; component < expectedComponentAmount; component++)
+		{
+			if (isWhite)
+			{
+				ASSERT(components[component] > color_high_threshold, "Expected white pixel", stream);
+			}
+			else
+			{
+				ASSERT(components[component] < color_low_threshold, "Expected black pixel", stream);
+			}
+		}
+	});
+}
+
 void test_black_white_8x8_file(std::ostream &stream)
 {
 	const unsigned int expectedComponentAmount = 3;
@@ -195,6 +239,8 @@ const test_bench_results jpeg::test_bench::run() throw()
 	vector.push_back(test("test for green 8x8 matrix jpeg file", test_green_8x8_file));
 	vector.push_back(test("test for 2x2 plain colors blocks", test_2x2_plain_blocks));
 	vector.push_back(test("test for mixed black white 8x8 jpeg file", test_black_white_8x8_file));
+	vector.push_back(test("test for YCbCr JPEG with subsample 2x1, 1x1, 1x1 (4:2:2) and 70% compression", test_subsample_422_file));
+	vector.push_back(test("test for YCbCr JPEG with subsample 1x2, 1x1, 1x1 and 70% compression", test_subsample_422_Y12_file));
 
 	test_result *tests = new test_result[vector.size()];
 	test_bench_results result(vector.size(), tests);
