@@ -291,10 +291,23 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 						const frame_channel::uint_fast4_t h_sample = channel.horizontal_sample;
 						const frame_channel::uint_fast4_t v_sample = channel.vertical_sample;
 
-						unsigned int x = (x_on_iteration < h_sample)? x_on_iteration : h_sample - 1;
-						unsigned int y = (y_on_iteration < v_sample)? y_on_iteration : v_sample - 1;
+						for (block_matrix::side_count_fast_t row = 0; row < block_matrix::SIDE; row++)
+						{
+							for (block_matrix::side_count_fast_t column = 0; column < block_matrix::SIDE; column++)
+							{
+								unsigned int whole_x_pos = x_on_iteration * block_matrix::SIDE + column;
+								unsigned int matrix_x_pos = (whole_x_pos * h_sample) / h_matrices_per_iteration;
 
-						ycbcr_components[channel_index] = matrices[channel_matrix_index + y * h_sample + x];
+								unsigned int whole_y_pos = y_on_iteration * block_matrix::SIDE + row;
+								unsigned int matrix_y_pos = (whole_y_pos * v_sample) / v_matrices_per_iteration;
+
+								unsigned int matrix_to_check = channel_matrix_index +
+										((matrix_y_pos / block_matrix::SIDE) * h_sample) + (matrix_x_pos / block_matrix::SIDE);
+
+								ycbcr_components[channel_index].set(column, row, matrices[matrix_to_check]
+								        .get(matrix_x_pos % block_matrix::SIDE, matrix_y_pos % block_matrix::SIDE));
+							}
+						}
 						channel_matrix_index += h_sample * v_sample;
 					}
 
