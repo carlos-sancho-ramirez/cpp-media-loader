@@ -70,7 +70,7 @@ huffman_table::symbol_value_t huffman_table::next_symbol(scan_bit_stream &bit_st
 {
 	unsigned int size = 0;
 	symbol_entry_t entry = 0;
-	while (++size < MAX_WORD_SIZE)
+	while (++size <= MAX_WORD_SIZE)
 	{
 		entry |= ((unsigned int) bit_stream.next_bit()) << (MAX_WORD_SIZE - size);
 		symbol_value_t symbol;
