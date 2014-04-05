@@ -64,13 +64,54 @@ void write_little_endian_unsigned_int(std::ostream &stream, unsigned int value, 
 	stream.write(buffer, bytes);
 }
 
-scan_bit_stream::scan_bit_stream(std::istream *stream) : stream(stream), valid_bits(0)
+bit_stream::bit_stream(std::istream *stream) : stream(stream), valid_bits(0)
 { }
 
-void scan_bit_stream::prepend(const unsigned char value)
+void bit_stream::prepend(const unsigned char value)
 {
 	valid_bits += 8;
 	last = (last >> 8) + value;
+}
+
+unsigned char bit_stream::next_bit()
+{
+	if (valid_bits == 0)
+	{
+		last = stream->get();
+		valid_bits = 8;
+	}
+
+	return (last >> --valid_bits) & 1;
+}
+
+bit_stream::raw_number_t bit_stream::next_raw_number(const number_bit_amount_t bits)
+{
+	raw_number_t result = 0;
+	for (number_bit_amount_t bit = 0; bit < bits; bit++)
+	{
+		result = (result << 1) + next_bit();
+	}
+
+	return result;
+}
+
+bit_stream::number_t bit_stream::next_number(const number_bit_amount_t bits)
+{
+	raw_number_t raw = next_raw_number(bits);
+
+	const bool is_negative = (raw & (1 << (bits - 1))) == 0;
+	number_t result;
+
+	if (is_negative)
+	{
+		result = -(raw ^ ((1 << bits) - 1));
+	}
+	else
+	{
+		result = raw;
+	}
+
+	return result;
 }
 
 unsigned char scan_bit_stream::next_bit() throw(unsupported_feature)
@@ -92,34 +133,4 @@ unsigned char scan_bit_stream::next_bit() throw(unsupported_feature)
 	}
 
 	return (last >> --valid_bits) & 1;
-}
-
-scan_bit_stream::raw_number_t scan_bit_stream::next_raw_number(const number_bit_amount_t bits)
-{
-	raw_number_t result = 0;
-	for (number_bit_amount_t bit = 0; bit < bits; bit++)
-	{
-		result = (result << 1) + next_bit();
-	}
-
-	return result;
-}
-
-scan_bit_stream::number_t scan_bit_stream::next_number(const number_bit_amount_t bits)
-{
-	raw_number_t raw = next_raw_number(bits);
-
-	const bool is_negative = (raw & (1 << (bits - 1))) == 0;
-	number_t result;
-
-	if (is_negative)
-	{
-		result = -(raw ^ ((1 << bits) - 1));
-	}
-	else
-	{
-		result = raw;
-	}
-
-	return result;
 }

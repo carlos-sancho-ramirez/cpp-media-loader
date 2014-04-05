@@ -37,7 +37,7 @@ public:
 	 * Checks the stream, determines the symbol and retuns it.
 	 * std::invalid_argument will be thrown if the huffman code is not present in the table.
 	 */
-	symbol_value_t next_symbol(scan_bit_stream &bit_stream) const throw(std::invalid_argument);
+	symbol_value_t next_symbol(bit_stream &bit_stream) const throw(std::invalid_argument);
 };
 
 #endif /* HUFFMAN_TABLES_HPP_ */

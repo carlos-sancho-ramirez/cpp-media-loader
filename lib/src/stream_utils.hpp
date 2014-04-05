@@ -12,12 +12,9 @@ unsigned int read_little_endian_unsigned_int(std::istream &stream, unsigned int 
 
 void write_little_endian_unsigned_int(std::ostream &stream, unsigned int value, unsigned int bytes) throw(std::invalid_argument);
 
-/**
- * Reads the stream returning it bit per bit in a suitable way for jpeg huffman tables.
- * This class also remove extra 0x00 bytes after 0xff if any.
- */
-class scan_bit_stream
+class bit_stream
 {
+protected:
 	enum
 	{
 		BUFFER_BYTES = 1,
@@ -38,9 +35,18 @@ public:
 	typedef typename bounded_integer<0, sizeof(number_t) * 8>::fast number_bit_amount_t;
 
 public:
-	scan_bit_stream(std::istream *stream);
+	bit_stream(std::istream *stream);
+
+	/**
+	 * Adds the value at the beginning of the internal buffer. So, this value will be returned again
+	 * bit a bit.
+	 */
 	void prepend(const unsigned char value);
-	unsigned char next_bit() throw(unsupported_feature);
+
+	/**
+	 * Returns 0 or 1 depending on the bit value
+	 */
+	virtual unsigned char next_bit();
 
 private:
 	raw_number_t next_raw_number(const number_bit_amount_t bits);
@@ -53,6 +59,21 @@ public:
 	 * be negative and must be negated to get the expected value.
 	 */
 	number_t next_number(const number_bit_amount_t bits);
+};
+
+/**
+ * Reads the stream returning it bit per bit in a suitable way for jpeg huffman tables.
+ * This class also remove extra 0x00 bytes after 0xff if any.
+ */
+class scan_bit_stream : public bit_stream
+{
+public:
+	scan_bit_stream(std::istream *stream) : bit_stream(stream) { }
+
+	/**
+	 * Does that same that its parent method but skipping every 0x00 byte after 0xFF.
+	 */
+	virtual unsigned char next_bit() throw(unsupported_feature);
 };
 
 #endif /* STREAM_UTILS_HPP_ */

@@ -66,7 +66,7 @@ bool huffman_table::find_symbol(const symbol_entry_t &entry, const unsigned int 
 	return true;
 }
 
-huffman_table::symbol_value_t huffman_table::next_symbol(scan_bit_stream &bit_stream) const throw(std::invalid_argument)
+huffman_table::symbol_value_t huffman_table::next_symbol(bit_stream &bit_stream) const throw(std::invalid_argument)
 {
 	unsigned int size = 0;
 	symbol_entry_t entry = 0;
