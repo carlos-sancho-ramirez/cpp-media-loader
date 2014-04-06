@@ -4,18 +4,21 @@
 
 #include <execinfo.h>
 #include <unistd.h>
+#include <stdexcept>
 
 /**
  * Object thrown whenever a value is going out of range.
  */
-struct out_of_range_error
+struct out_of_range_error : public std::range_error
 {
-	out_of_range_error()
+	out_of_range_error() :std::range_error("Strict controlled integer out of range")
 	{
-		void *array[10];
-		size_t size = backtrace(array, 10);
+#		ifdef PROJECT_PLATFORM_UNIX
+			void *array[10];
+			size_t size = backtrace(array, 10);
 
-		backtrace_symbols_fd(array, size, STDERR_FILENO);
+			backtrace_symbols_fd(array, size, STDERR_FILENO);
+#		endif //PROJECT_PLATFORM_UNIX
 	}
 };
 

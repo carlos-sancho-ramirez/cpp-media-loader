@@ -14,6 +14,7 @@ public:
 		MAX_WORD_SIZE = 16
 	};
 	typedef bounded_integer<0, (1 << MAX_WORD_SIZE) - 1>::fast symbol_entry_t;
+	typedef bounded_integer<0, 1 << MAX_WORD_SIZE>::fast symbol_entry_limit_t;
 	typedef bounded_integer<0, 255>::fast symbols_per_size_t;
 	typedef unsigned char symbol_value_t;
 	typedef uint_fast16_t symbol_index_t;
@@ -24,7 +25,7 @@ private:
 	const symbol_value_t *symbols;
 	symbol_count_t _symbol_amount;
 
-	symbol_entry_t start_entry_for_size(const unsigned int size) const;
+	symbol_entry_limit_t start_entry_for_size(const unsigned int size) const;
 	bool find_symbol(const symbol_entry_t &entry, const unsigned int size, symbol_value_t &symbol) const;
 
 public:

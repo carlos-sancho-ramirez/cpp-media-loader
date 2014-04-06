@@ -21,5 +21,6 @@
 	}
 
 TEST_BENCH_DECLARATION(jpeg)
+TEST_BENCH_DECLARATION(huffman_tables)
 
 #endif /* BENCHES_HPP_ */

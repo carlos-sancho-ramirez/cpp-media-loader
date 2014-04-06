@@ -37,6 +37,11 @@ test_result test_bench::test(const std::string &title, void (*function)(std::ost
 		function(test_stream);
 		result.passed = true;
 	}
+	catch (std::exception &)
+	{
+		result.passed = false;
+		result.log = test_stream.str();
+	}
 	catch (...)
 	{
 		result.passed = false;

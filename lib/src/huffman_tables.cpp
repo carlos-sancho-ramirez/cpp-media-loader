@@ -33,9 +33,9 @@ uint_fast16_t huffman_table::expected_byte_size() const
 	return _symbol_amount + MAX_WORD_SIZE + 3;
 }
 
-huffman_table::symbol_entry_t huffman_table::start_entry_for_size(const unsigned int size) const
+huffman_table::symbol_entry_limit_t huffman_table::start_entry_for_size(const unsigned int size) const
 {
-	symbol_entry_t entry = 0;
+	symbol_entry_limit_t entry = 0;
 	for (unsigned int size_index = 1; size_index < size; size_index++)
 	{
 		const unsigned int symbols = symbols_per_size[size_index - 1];
@@ -47,8 +47,8 @@ huffman_table::symbol_entry_t huffman_table::start_entry_for_size(const unsigned
 
 bool huffman_table::find_symbol(const symbol_entry_t &entry, const unsigned int size, symbol_value_t &symbol) const
 {
-	const symbol_entry_t start_for_this_size = start_entry_for_size(size);
-	const symbol_entry_t start_for_next_size = start_entry_for_size(size + 1);
+	const symbol_entry_limit_t start_for_this_size = start_entry_for_size(size);
+	const symbol_entry_limit_t start_for_next_size = start_entry_for_size(size + 1);
 
 	if (start_for_this_size > entry || start_for_next_size <= entry)
 	{

@@ -123,9 +123,24 @@ int main(int argc, char *argv[])
 	test("test plain block_matrix DCT", test_plain_block_matrix_dct);
 	test("test black and white block_matrix DCT", test_black_white_block_matrix_dct);
 
+	const test_bench_results huffman_tables_results = huffman_tables::test_bench().run();
+	const unsigned int total_huffman_tables_tests = huffman_tables_results.total();
+	for (unsigned int index = 0; index < total_huffman_tables_tests; index++)
+	{
+		const test_result result = huffman_tables_results.tests[index];
+		std::cout << result.title << "... " << (result.passed? "ok" : "ko") << std::endl;
+		if (!result.passed)
+		{
+			std::cerr << result.log << std::endl;
+		}
+	}
+
+	passed_tests += huffman_tables_results.passed();
+	failed_tests += huffman_tables_results.failed();
+
 	const test_bench_results jpeg_results = jpeg::test_bench().run();
-	const unsigned int totalJpegTests = jpeg_results.total();
-	for (unsigned int index = 0; index < totalJpegTests; index++)
+	const unsigned int total_jpeg_tests = jpeg_results.total();
+	for (unsigned int index = 0; index < total_jpeg_tests; index++)
 	{
 		const test_result result = jpeg_results.tests[index];
 		std::cout << result.title << "... " << (result.passed? "ok" : "ko") << std::endl;
