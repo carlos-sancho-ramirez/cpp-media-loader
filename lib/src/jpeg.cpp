@@ -79,7 +79,7 @@ frame_info::frame_info(std::istream &stream, const table_list<quantization_table
 	{
 		// Due to I am unable to find proper specifications I am not fully sure to be extracting the
 		// channels properly.
-		// TODO: This must be ensured that works for other configuration of channels than YCbCr and with asymetric sample (2x1, 1x2,...)
+		// TODO: This must be ensured that works for other configuration of channels
 
 		frame_channel &channel = channels[channel_index];
 		channel.channel_type = static_cast<frame_channel::channel_type_e>(stream.get());
@@ -108,7 +108,7 @@ scan_info::scan_info(std::istream &stream, const table_list<huffman_table> &dc_t
 	{
 		// Due to I am unable to find proper specifications I am not fully sure to be extracting the
 		// channels properly.
-		// TODO: This must be ensured that works for other configuration of channels than YCbCr and with asymetric sample (2x1, 1x2,...)
+		// TODO: This must be ensured that works for other configuration of channels than YCbCr
 
 		scan_channel &channel = channels[channel_index];
 		channel.channel_type = static_cast<frame_channel::channel_type_e>(stream.get());
@@ -244,31 +244,6 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 
 					frame_channel.table->multiply_block(dct_matrix);
 					matrices[matrix_index++] = dct_matrix.extract_inverse_dct();
-
-					/*
-					// Temporal code to check all is fine
-					std::cout << "DCT channel matrix is:" << std::endl;
-					for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-					{
-						std::cout << "  [";
-						for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-						{
-							std::cout << dct_matrix.get(x, y) << ",\t";
-						}
-						std::cout << "]" << std::endl;
-					}
-
-					std::cout << "Resulting channel matrix is:" << std::endl;
-					for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-					{
-						std::cout << "  [";
-						for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-						{
-							std::cout << matrices[channel].get(x, y) << ",\t";
-						}
-						std::cout << "]" << std::endl;
-					}
-					*/
 				}
 			}
 		}
@@ -324,22 +299,6 @@ void decode_scan_data(bitmap &bitmap, scan_bit_stream &stream, frame_info &frame
 					}
 
 					setImageBlock(bitmap, x_position + x_on_iteration * block_matrix::SIDE, y_position + y_on_iteration * block_matrix::SIDE, rgb_components);
-
-					/*
-					for (unsigned int index = 0; index < 3; index++)
-					{
-						std::cout << "Resulting matrix " << index << " is:" << std::endl;
-						for (block_matrix::side_count_fast_t y = 0; y < block_matrix::SIDE; y++)
-						{
-							std::cout << "  [";
-							for (block_matrix::side_count_fast_t x = 0; x < block_matrix::SIDE; x++)
-							{
-								std::cout << rgb_components[index].get(x, y) << ",\t";
-							}
-							std::cout << "]" << std::endl;
-						}
-					}
-					*/
 				}
 			}
 		}
@@ -379,11 +338,11 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 		case jpeg_marker::COMMENT:
 			do
 			{
-				char *comment = new char[size - 2];
-				stream.read(comment, size - 2);
+				shared_array<char> comment = shared_array<char>::make(new char[size - 1]);
+				stream.read(comment.get(), size - 2);
+				comment[size - 2] = '\0';
 
 				std::cout << "Found comment: " << comment << std::endl;
-				delete[] comment;
 			} while(0);
 			break;
 
@@ -396,21 +355,18 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 				const uint_fast8_t table_id = stream.get();
 				if (table_id >= max_tables)
 				{
-					std::cout << "Found invalid quantization table id. It is "
+					std::cerr << "Found invalid quantization table id. It is "
 							<< static_cast<unsigned int>(table_id) << " but id can be only between 0 and "
 							<< static_cast<unsigned int>(max_tables - 1) << std::endl;
 				}
 				else
 				{
-					std::cout << "Found quantization table with id "
-							<< static_cast<unsigned int>(table_id) << std::endl;
 					tables.list[table_id] = new quantization_table(stream);
-					//tables.list[table_id]->print(std::cout);
 				}
 			}
 			else
 			{
-				std::cout << "Found invalid quantization table. Expected size was "
+				std::cerr << "Found invalid quantization table. Expected size was "
 						<< static_cast<unsigned int>(quantization_table::SIDE) << 'x'
 						<< static_cast<unsigned int>(quantization_table::SIDE) << std::endl;
 			}
@@ -431,7 +387,7 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 				}
 				else
 				{
-					std::cout << "Found invalid frame. Expected size was "
+					std::cerr << "Found invalid frame. Expected size was "
 							<< static_cast<unsigned int>(current_frame->expected_byte_size()) << " but actually was "
 							<< static_cast<unsigned int>(size) << std::endl;
 				}
@@ -446,17 +402,14 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 				bool is_ac = (table_ref & 0x10) != 0;
 
 				huffman_table *table = new huffman_table(stream);
-				const uint_fast8_t symbol_amount = table->symbol_amount();
 				const uint_fast16_t expected_size = table->expected_byte_size();
 				if (size == expected_size)
 				{
 					(is_ac? ac_tables : dc_tables).list[table_id] = table;
-					std::cout << "Found huffman table with id " << static_cast<unsigned int>(table_id)
-								<< " for " << (is_ac? "ac" : "dc") << " (" << static_cast<unsigned int>(symbol_amount) << " symbols found)" << std::endl;
 				}
 				else
 				{
-					std::cout << "Found invalid huffman table. Expected size for it was "
+					std::cerr << "Found invalid huffman table. Expected size for it was "
 							<< expected_size << " but size is actually " << size << std::endl;
 				}
 			} while(0);
@@ -487,13 +440,12 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 					std::cout << "Found JFIF v" << static_cast<unsigned int>(jfif_info.major_version())
 								<< "." << static_cast<unsigned int>(jfif_info.minor_version())
 								<< " section:" << std::endl
-								<< " Density units: " << density_units << std::endl
-								<< " X Density: " << jfif_info.x_density() << std::endl
-								<< " Y Density: " << jfif_info.y_density() << std::endl;
+								<< " X Density: " << jfif_info.x_density() << ' ' << density_units << std::endl
+								<< " Y Density: " << jfif_info.y_density() << ' ' << density_units << std::endl;
 				}
 				else
 				{
-					std::cout << "Found JFIF section but it is not valid" << std::endl;
+					std::cerr << "Found JFIF section but it is not valid" << std::endl;
 				}
 			} while(0);
 			break;
@@ -511,7 +463,7 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 				}
 				else
 				{
-					std::cout << "Found invalid scan. Expected size was "
+					std::cerr << "Found invalid scan. Expected size was "
 							<< static_cast<unsigned int>(current_scan->expected_byte_size()) << " but actually was "
 							<< static_cast<unsigned int>(size) << std::endl;
 				}
@@ -520,7 +472,7 @@ void jpeg::decode_image(bitmap &bitmap, std::istream &stream) throw(invalid_file
 
 		default:
 			stream.ignore(size - 2);
-			std::cout << "Found section of type " << static_cast<unsigned int>(marker_type) << " and size " << size << std::endl;
+			std::cerr << "Found section with marker " << static_cast<unsigned int>(marker_type) << " and size " << size <<". Ignored!" << std::endl;
 		}
 	}
 
